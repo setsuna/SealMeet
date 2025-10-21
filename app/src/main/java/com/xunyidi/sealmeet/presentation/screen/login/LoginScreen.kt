@@ -37,7 +37,8 @@ import com.xunyidi.sealmeet.presentation.theme.TextInverse
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
-    onNavigateToHome: () -> Unit = {}
+    onNavigateToHome: () -> Unit = {},
+    onNavigateToQuickMeeting: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -226,9 +227,7 @@ fun LoginScreen(
 
                 // 快速会议按钮
                 OutlinedButton(
-                    onClick = {
-                        // TODO: 快速会议功能
-                    },
+                    onClick = onNavigateToQuickMeeting,
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = AppColors.primaryDefault
                     ),
