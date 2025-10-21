@@ -37,13 +37,16 @@ class MainActivity : ComponentActivity() {
                 checkAndUnpackOnStart()
             } else {
                 Timber.w("存储权限被拒绝")
-                Toast.makeText(this, "需要存储权限才能同步会议数据", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "需要完整存储访问权限才能同步会议数据", Toast.LENGTH_LONG).show()
             }
         }
         
-        if (StoragePermissionHelper.hasPermissions(this)) {
+        // 检查权限
+        if (StoragePermissionHelper.hasStoragePermission(this)) {
+            Timber.i("已有存储权限，开始解包")
             checkAndUnpackOnStart()
         } else {
+            Timber.w("无存储权限，请求授权")
             permissionRequester.requestPermissions()
         }
 

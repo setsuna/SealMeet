@@ -12,7 +12,7 @@ import java.io.File
 class SyncFileManager {
     
     companion object {
-        private const val SYNC_LOCK_FILE = ".sync_lock" // 全局同步锁文件
+        private const val SYNC_LOCK_FILE = ".sync_lock"
         private const val PACKAGE_FILE_EXTENSION = ".zip.enc"
         private const val MANIFEST_FILE_NAME = "manifest.json"
     }
@@ -29,46 +29,72 @@ class SyncFileManager {
      */
     fun isSyncDirectoryAccessible(): Boolean {
         val syncDir = getSyncDirectory()
-        return syncDir.exists() && syncDir.isDirectory && syncDir.canRead()
+        val exists = syncDir.exists()
+        val isDir = syncDir.isDirectory
+        val canRead = syncDir.canRead()
+        
+        Timber.d("同步目录: ${syncDir.absolutePath}")
+        Timber.d("目录存在: $exists, 是目录: $isDir, 可读: $canRead")
+        
+        return exists && isDir && canRead
     }
     
     /**
      * 检查是否正在同步
-     * 
-     * @return true表示正在同步中，不应进行解包操作
      */
     fun isSyncing(): Boolean {
         val syncDir = getSyncDirectory()
         val lockFile = File(syncDir, SYNC_LOCK_FILE)
-        return lockFile.exists()
+        val exists = lockFile.exists()
+        
+        if (exists) {
+            Timber.i("检测到同步锁文件: ${lockFile.absolutePath}")
+        }
+        
+        return exists
     }
     
     /**
      * 扫描同步目录，查找所有待解包的会议包文件
-     * 
-     * @return 待解包的文件列表（如果正在同步则返回空列表）
      */
     fun scanPackageFiles(): List<PackageFile> {
         val syncDir = getSyncDirectory()
         
+        Timber.i("========== 开始扫描同步目录 ==========")
+        Timber.i("目录路径: ${syncDir.absolutePath}")
+        
         if (!isSyncDirectoryAccessible()) {
-            Timber.w("同步目录不可访问: ${syncDir.absolutePath}")
+            Timber.w("同步目录不可访问")
             return emptyList()
         }
         
-        // 检查全局同步锁
         if (isSyncing()) {
-            Timber.i("检测到同步锁文件，文件同步中，跳过解包")
+            Timber.i("检测到同步锁文件，跳过解包")
             return emptyList()
         }
+        
+        val files = syncDir.listFiles()
+        
+        if (files == null) {
+            Timber.e("listFiles() 返回null，可能没有权限")
+            return emptyList()
+        }
+        
+        Timber.i("目录中共有 ${files.size} 个文件/文件夹:")
+        files.forEachIndexed { index, file ->
+            val type = if (file.isDirectory) "[目录]" else "[文件]"
+            val size = if (file.isFile) "(${file.length()} bytes)" else ""
+            Timber.i("  ${index + 1}. $type ${file.name} $size")
+        }
+        
+        Timber.i("========== 开始筛选.zip.enc文件 ==========")
         
         val packageFiles = mutableListOf<PackageFile>()
         
-        syncDir.listFiles()?.forEach { file ->
-            // 只处理 .zip.enc 文件
+        files.forEach { file ->
             if (file.isFile && file.name.endsWith(PACKAGE_FILE_EXTENSION)) {
-                // 从文件名提取meetingID
-                // 格式: meeting_{meetingID}.zip.enc
+                Timber.i("✓ 找到包文件: ${file.name}")
+                
                 val meetingId = extractMeetingId(file.name)
                 
                 if (meetingId != null) {
@@ -78,30 +104,25 @@ class SyncFileManager {
                             meetingId = meetingId
                         )
                     )
-                    Timber.d("发现待解包文件: ${file.name}, meetingId=$meetingId")
+                    Timber.i("  → meetingId: $meetingId")
                 } else {
-                    Timber.w("无法从文件名提取meetingID: ${file.name}")
+                    Timber.w("  → 无法提取meetingID")
                 }
             }
         }
         
-        Timber.i("扫描完成，发现 ${packageFiles.size} 个待解包文件")
+        Timber.i("========== 扫描完成 ==========")
+        Timber.i("发现 ${packageFiles.size} 个待解包文件")
+        
         return packageFiles
     }
     
-    /**
-     * 从文件名提取meetingID
-     * 文件名格式: meeting_{meetingID}.zip.enc
-     */
     private fun extractMeetingId(fileName: String): String? {
         val pattern = """meeting_(.+)\.zip\.enc""".toRegex()
         val matchResult = pattern.find(fileName)
         return matchResult?.groupValues?.get(1)
     }
     
-    /**
-     * 读取manifest.json文件
-     */
     fun readManifest(): ManifestData? {
         val syncDir = getSyncDirectory()
         val manifestFile = File(syncDir, MANIFEST_FILE_NAME)
@@ -113,22 +134,14 @@ class SyncFileManager {
         
         return try {
             val json = manifestFile.readText()
-            // 这里可以使用 Gson 或 kotlinx.serialization 解析
-            // 暂时返回null，由具体实现决定
             Timber.d("manifest.json 读取成功")
-            null // TODO: 解析JSON
+            null
         } catch (e: Exception) {
             Timber.e(e, "读取manifest.json失败")
             null
         }
     }
     
-    /**
-     * 删除包文件
-     * 
-     * @param packageFile 要删除的包文件
-     * @return 是否删除成功
-     */
     fun deletePackageFile(packageFile: PackageFile): Boolean {
         return try {
             val deleted = packageFile.file.delete()
@@ -144,18 +157,12 @@ class SyncFileManager {
         }
     }
     
-    /**
-     * 清理损坏的包文件
-     */
     fun cleanupCorruptedPackage(packageFile: PackageFile, reason: String) {
         Timber.w("清理损坏的包文件: ${packageFile.file.name}, 原因: $reason")
         deletePackageFile(packageFile)
     }
 }
 
-/**
- * 包文件信息
- */
 data class PackageFile(
     val file: File,
     val meetingId: String
@@ -167,10 +174,6 @@ data class PackageFile(
         get() = file.length()
 }
 
-/**
- * Manifest数据结构
- * 对应后台的 manifest.json
- */
 data class ManifestData(
     val version: String,
     val updatedAt: String,
