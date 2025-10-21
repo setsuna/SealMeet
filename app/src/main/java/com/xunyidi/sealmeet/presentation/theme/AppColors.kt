@@ -44,6 +44,9 @@ object AppColors {
     val textSecondary: Color
         @Composable get() = ThemeManager.getTextSecondaryColor()
     
+    val textTertiary: Color
+        @Composable get() = if (ThemeManager.getCurrentConfig().isDark) TextTertiaryDark else TextTertiary
+    
     // 固定颜色（全局常量，不随主题变化）
     val success: Color = ColorSuccess
     val warning: Color = ColorWarning

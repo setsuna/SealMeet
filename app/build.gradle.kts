@@ -64,6 +64,7 @@ dependencies {
     
     // Hilt (使用KSP)
     implementation(libs.hilt.android)
+    implementation(libs.androidx.animation.lint)
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
     
@@ -84,7 +85,8 @@ dependencies {
     
     // Timber
     implementation(libs.timber)
-    
+    //icon
+    implementation("androidx.compose.material:material-icons-extended")
     // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

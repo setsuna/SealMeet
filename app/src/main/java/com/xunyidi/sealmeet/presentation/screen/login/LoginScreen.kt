@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lint.kotlin.metadata.Visibility
 import com.xunyidi.sealmeet.presentation.theme.AppColors
 import com.xunyidi.sealmeet.presentation.theme.TextInverse
 
