@@ -18,18 +18,12 @@ import androidx.room.PrimaryKey
             parentColumns = ["id"],
             childColumns = ["meeting_id"],
             onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = MeetingAgendaEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["agenda_id"],
-            onDelete = ForeignKey.SET_NULL
         )
+        // 移除议程外键约束，因为议程可能不存在
     ],
     indices = [
         Index(value = ["meeting_id"]),
-        Index(value = ["agenda_id"]),
-        Index(value = ["meeting_id", "agenda_id"])
+        Index(value = ["agenda_id"])
     ]
 )
 data class MeetingFileEntity(

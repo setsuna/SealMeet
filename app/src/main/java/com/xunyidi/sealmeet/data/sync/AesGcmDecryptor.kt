@@ -11,11 +11,17 @@ import javax.crypto.spec.SecretKeySpec
  * 
  * 用于解密后台打包的加密文件
  * 加密算法：AES-256-GCM
- * 密钥派生：SHA256(masterKey + meetingID + salt)
+ * 密钥派生：SHA256(SHA256(masterKey) + fileID + salt)
+ * 
+ * 注意：密钥派生逻辑必须与后台完全一致！
  */
 class AesGcmDecryptor(
-    private val masterKey: String
+    masterKey: String
 ) {
+    
+    // 初始化时对masterKey做SHA256，与后台逻辑一致
+    private val masterKeyBytes: ByteArray = MessageDigest.getInstance("SHA-256")
+        .digest(masterKey.toByteArray(Charsets.UTF_8))
     
     companion object {
         private const val ALGORITHM = "AES/GCM/NoPadding"
@@ -30,11 +36,23 @@ class AesGcmDecryptor(
     
     /**
      * 派生文件专用密钥
-     * 算法与后台保持一致：SHA256(masterKey + fileID + salt)
+     * 算法与后台保持一致：SHA256(masterKeyBytes作为字符串 + fileID + salt)
+     * 
+     * 注意：Go中 fmt.Sprintf("%s", []byte) 会将字节数组直接转换为字符串
+     * 在Kotlin中需要使用 ISO_8859_1 编码来保持字节值不变
      */
     private fun deriveKey(fileId: String): ByteArray {
-        val data = "${masterKey}${fileId}${SALT}"
-        return MessageDigest.getInstance("SHA-256").digest(data.toByteArray())
+        // 将masterKeyBytes转换为字符串（与Go的string([]byte)行为一致）
+        val masterKeyStr = String(masterKeyBytes, Charsets.ISO_8859_1)
+        
+        // 拼接：masterKeyStr + fileID + salt
+        val data = masterKeyStr + fileId + SALT
+        
+        // 使用ISO_8859_1编码转换回字节（保持字节值不变）
+        val dataBytes = data.toByteArray(Charsets.ISO_8859_1)
+        
+        // 计算SHA256
+        return MessageDigest.getInstance("SHA-256").digest(dataBytes)
     }
     
     /**
@@ -49,6 +67,9 @@ class AesGcmDecryptor(
         try {
             // 派生密钥
             val key = deriveKey(fileId)
+            
+            Timber.d("解密参数: fileId=$fileId, masterKeyBytes=${masterKeyBytes.size}bytes, derivedKey=${key.size}bytes")
+            
             val secretKey = SecretKeySpec(key, "AES")
             
             // 初始化密码器
@@ -59,22 +80,28 @@ class AesGcmDecryptor(
             
             // 检查数据长度
             if (encryptedData.size < nonceSize) {
-                throw DecryptionException("加密数据长度不足，无法提取nonce")
+                throw DecryptionException("加密数据长度不足，无法提取nonce: ${encryptedData.size} < $nonceSize")
             }
             
             // 提取nonce和密文
             val nonce = encryptedData.copyOfRange(0, nonceSize)
             val ciphertext = encryptedData.copyOfRange(nonceSize, encryptedData.size)
             
+            Timber.d("解密: nonceSize=$nonceSize, ciphertextSize=${ciphertext.size}")
+            
             // 使用GCM参数规范
             val gcmSpec = GCMParameterSpec(TAG_LENGTH_BIT, nonce)
             cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec)
             
             // 解密
-            return cipher.doFinal(ciphertext)
+            val plaintext = cipher.doFinal(ciphertext)
+            
+            Timber.d("解密成功: plaintextSize=${plaintext.size}")
+            
+            return plaintext
             
         } catch (e: Exception) {
-            Timber.e(e, "解密失败: fileId=$fileId")
+            Timber.e(e, "解密失败: fileId=$fileId, dataSize=${encryptedData.size}")
             throw DecryptionException("解密失败: ${e.message}", e)
         }
     }

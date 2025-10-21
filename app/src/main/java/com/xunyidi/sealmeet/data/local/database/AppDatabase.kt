@@ -23,7 +23,7 @@ import com.xunyidi.sealmeet.data.local.database.entity.MeetingParticipantEntity
         MeetingAgendaEntity::class,
         MeetingFileEntity::class
     ],
-    version = 1,
+    version = 2, // 增加版本号
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
