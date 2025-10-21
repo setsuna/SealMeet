@@ -9,6 +9,7 @@ import com.xunyidi.sealmeet.data.local.database.entity.MeetingAgendaEntity
 import com.xunyidi.sealmeet.data.local.database.entity.MeetingEntity
 import com.xunyidi.sealmeet.data.local.database.entity.MeetingFileEntity
 import com.xunyidi.sealmeet.data.local.database.entity.MeetingParticipantEntity
+import com.xunyidi.sealmeet.data.preferences.AppPreferences
 import com.xunyidi.sealmeet.data.sync.AesGcmDecryptor
 import com.xunyidi.sealmeet.data.sync.ChecksumVerifier
 import com.xunyidi.sealmeet.data.sync.DecryptionException
@@ -21,6 +22,7 @@ import com.xunyidi.sealmeet.data.sync.model.PackageManifest
 import com.xunyidi.sealmeet.data.sync.model.UnpackError
 import com.xunyidi.sealmeet.data.sync.model.UnpackResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -41,6 +43,7 @@ import javax.inject.Singleton
 class UnpackMeetingUseCase @Inject constructor(
     private val database: AppDatabase,
     private val syncFileManager: SyncFileManager,
+    private val appPreferences: AppPreferences,
     private val context: android.content.Context
 ) {
     
@@ -58,6 +61,12 @@ class UnpackMeetingUseCase @Inject constructor(
      */
     suspend fun unpackMeeting(packageFile: PackageFile): UnpackResult = withContext(Dispatchers.IO) {
         Timber.i("开始解包会议: ${packageFile.meetingId}")
+        
+        // 读取配置
+        val incrementalUpdateEnabled = appPreferences.incrementalUpdateEnabled.first()
+        val keepTempFilesEnabled = appPreferences.keepTempFilesEnabled.first()
+        
+        Timber.i("配置: 增量更新=$incrementalUpdateEnabled, 保留临时文件=$keepTempFilesEnabled")
         
         try {
             // 1. 读取加密文件
@@ -182,27 +191,31 @@ class UnpackMeetingUseCase @Inject constructor(
                     }
                 }
                 
-                // 9. 存入数据库（使用withTransaction支持挂起函数）
+                // 9. 存入数据库（事务）
                 database.withTransaction {
-                    // 检查是否已存在该会议
-                    val existingMeeting = database.meetingDao().getById(packageFile.meetingId)
-                    
-                    if (existingMeeting != null) {
-                        Timber.i("会议已存在，更新数据: ${packageFile.meetingId}")
+                    // 如果关闭了增量更新，先清空所有数据
+                    if (!incrementalUpdateEnabled) {
+                        Timber.i("增量更新已关闭，清空所有数据...")
+                        database.clearAllTables()
                         
-                        // 获取旧文件列表（用于后续删除物理文件）
-                        val oldFiles = database.fileDao().getByMeetingId(packageFile.meetingId)
-                        
-                        // 删除旧的会议（会级联删除关联数据）
-                        database.meetingDao().deleteById(packageFile.meetingId)
-                        
-                        // 删除旧的物理文件
-                        oldFiles.forEach { oldFile ->
-                            try {
+                        // 删除所有会议文件
+                        val meetingsRootDir = File(context.filesDir, "meetings")
+                        if (meetingsRootDir.exists()) {
+                            meetingsRootDir.deleteRecursively()
+                            Timber.i("已删除所有会议文件")
+                        }
+                    } else {
+                        // 增量更新模式：检查是否已存在该会议
+                        val existingMeeting = database.meetingDao().getById(packageFile.meetingId)
+                        if (existingMeeting != null) {
+                            Timber.i("会议已存在，更新数据: ${packageFile.meetingId}")
+                            // 删除旧的关联数据（会自动级联删除）
+                            database.meetingDao().deleteById(packageFile.meetingId)
+                            
+                            // 删除旧的文件
+                            val oldFiles = database.fileDao().getByMeetingId(packageFile.meetingId)
+                            oldFiles.forEach { oldFile ->
                                 File(oldFile.localPath).delete()
-                                Timber.d("删除旧文件: ${oldFile.originalName}")
-                            } catch (e: Exception) {
-                                Timber.w(e, "删除旧文件失败: ${oldFile.originalName}")
                             }
                         }
                     }
@@ -244,8 +257,13 @@ class UnpackMeetingUseCase @Inject constructor(
                 
                 Timber.i("解包成功: ${packageFile.meetingId}, 文件=${fileEntityList.size}, 参会人员=${participants.size}, 议程=${agendas.size}")
                 
-                // 10. 清理临时文件
-                tempDir.deleteRecursively()
+                // 10. 根据配置决定是否清理临时文件
+                if (keepTempFilesEnabled) {
+                    Timber.i("保留临时文件: ${tempDir.absolutePath}")
+                } else {
+                    tempDir.deleteRecursively()
+                    Timber.d("已清理临时文件")
+                }
                 
                 // 11. 删除原包文件
                 syncFileManager.deletePackageFile(packageFile)
@@ -256,8 +274,8 @@ class UnpackMeetingUseCase @Inject constructor(
                 )
                 
             } finally {
-                // 确保临时目录被清理
-                if (tempDir.exists()) {
+                // 如果不保留临时文件，确保临时目录被清理
+                if (!keepTempFilesEnabled && tempDir.exists()) {
                     tempDir.deleteRecursively()
                 }
             }
