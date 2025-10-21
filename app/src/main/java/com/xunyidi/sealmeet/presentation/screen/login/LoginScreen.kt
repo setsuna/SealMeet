@@ -224,6 +224,28 @@ fun LoginScreen(
                     }
                 }
 
+                // 快速会议按钮
+                OutlinedButton(
+                    onClick = {
+                        // TODO: 快速会议功能
+                    },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = AppColors.primaryDefault
+                    ),
+                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                        brush = androidx.compose.ui.graphics.SolidColor(AppColors.primaryDefault)
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                ) {
+                    Text(
+                        text = "快速会议",
+                        fontSize = 16.sp
+                    )
+                }
+
                 // 提示文本
                 Text(
                     text = "测试账号: admin / 123456",
