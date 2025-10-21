@@ -113,7 +113,7 @@ fun MeetingListScreen(
                                 meeting = meeting,
                                 onClick = {
                                     viewModel.handleIntent(
-                                        MeetingListContract.Intent.SelectMeeting(meeting.meetingId)
+                                        MeetingListContract.Intent.SelectMeeting(meeting.id)
                                     )
                                 }
                             )
@@ -153,7 +153,7 @@ private fun MeetingCard(
         ) {
             // 会议名称
             Text(
-                text = meeting.meetingName,
+                text = meeting.name,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = AppColors.textPrimary
@@ -178,51 +178,37 @@ private fun MeetingCard(
             }
 
             // 会议地点
-            if (meeting.location.isNotBlank()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint = AppColors.textSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = meeting.location,
-                        fontSize = 14.sp,
-                        color = AppColors.textSecondary
-                    )
+            meeting.location?.let { location ->
+                if (location.isNotBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = AppColors.textSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = location,
+                            fontSize = 14.sp,
+                            color = AppColors.textSecondary
+                        )
+                    }
                 }
             }
 
-            // 参会人数
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.People,
-                    contentDescription = null,
-                    tint = AppColors.textSecondary,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = "${meeting.participantCount}人",
-                    fontSize = 14.sp,
-                    color = AppColors.textSecondary
-                )
-            }
-
             // 会议描述
-            if (meeting.description.isNotBlank()) {
-                Text(
-                    text = meeting.description,
-                    fontSize = 13.sp,
-                    color = AppColors.textTertiary,
-                    maxLines = 2
-                )
+            meeting.description?.let { description ->
+                if (description.isNotBlank()) {
+                    Text(
+                        text = description,
+                        fontSize = 13.sp,
+                        color = AppColors.textTertiary,
+                        maxLines = 2
+                    )
+                }
             }
         }
     }

@@ -1,7 +1,9 @@
 package com.xunyidi.sealmeet.domain.usecase
 
-import com.google.gson.Gson
-import com.google.gson.JsonSyntaxException
+import androidx.room.withTransaction
+import com.squareup.moshi.JsonDataException
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.xunyidi.sealmeet.data.local.database.AppDatabase
 import com.xunyidi.sealmeet.data.local.database.entity.MeetingAgendaEntity
 import com.xunyidi.sealmeet.data.local.database.entity.MeetingEntity
@@ -45,7 +47,11 @@ class UnpackMeetingUseCase @Inject constructor(
     private val decryptor = AesGcmDecryptor(AesGcmDecryptor.DEFAULT_PACKAGE_KEY)
     private val unzipper = FileUnzipper()
     private val checksumVerifier = ChecksumVerifier()
-    private val gson = Gson()
+    
+    // 初始化Moshi
+    private val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
     
     /**
      * 解包单个会议包
@@ -101,8 +107,9 @@ class UnpackMeetingUseCase @Inject constructor(
                 }
                 
                 val manifest = try {
-                    gson.fromJson(String(manifestData), PackageManifest::class.java)
-                } catch (e: JsonSyntaxException) {
+                    val adapter = moshi.adapter(PackageManifest::class.java)
+                    adapter.fromJson(String(manifestData))
+                } catch (e: JsonDataException) {
                     Timber.e(e, "manifest.json 解析失败")
                     syncFileManager.cleanupCorruptedPackage(packageFile, "manifest.json格式错误")
                     return@withContext UnpackResult.Failure(
@@ -110,13 +117,24 @@ class UnpackMeetingUseCase @Inject constructor(
                         UnpackError.ManifestInvalid("JSON解析失败: ${e.message}")
                     )
                 }
+                
+                if (manifest == null) {
+                    Timber.e("manifest.json 解析结果为null")
+                    syncFileManager.cleanupCorruptedPackage(packageFile, "manifest.json解析失败")
+                    return@withContext UnpackResult.Failure(
+                        packageFile.meetingId,
+                        UnpackError.ManifestInvalid("JSON解析结果为null")
+                    )
+                }
+                
                 Timber.d("manifest.json 解析成功: ${manifest.meetingName}")
                 
                 // 6. 读取checksum.json（可选）
                 val checksumData = unzipper.readFileFromZip(zipData, "checksum.json")
                 val checksum = checksumData?.let {
                     try {
-                        gson.fromJson(String(it), PackageChecksum::class.java)
+                        val adapter = moshi.adapter(PackageChecksum::class.java)
+                        adapter.fromJson(String(it))
                     } catch (e: Exception) {
                         Timber.w(e, "checksum.json 解析失败，跳过校验")
                         null
@@ -164,19 +182,28 @@ class UnpackMeetingUseCase @Inject constructor(
                     }
                 }
                 
-                // 9. 存入数据库（事务）
-                database.runInTransaction {
-                    // 检查是否已存在该会议，如果存在则先删除旧数据
+                // 9. 存入数据库（使用withTransaction支持挂起函数）
+                database.withTransaction {
+                    // 检查是否已存在该会议
                     val existingMeeting = database.meetingDao().getById(packageFile.meetingId)
+                    
                     if (existingMeeting != null) {
                         Timber.i("会议已存在，更新数据: ${packageFile.meetingId}")
-                        // 删除旧的关联数据（会自动级联删除）
+                        
+                        // 获取旧文件列表（用于后续删除物理文件）
+                        val oldFiles = database.fileDao().getByMeetingId(packageFile.meetingId)
+                        
+                        // 删除旧的会议（会级联删除关联数据）
                         database.meetingDao().deleteById(packageFile.meetingId)
                         
-                        // 删除旧的文件
-                        val oldFiles = database.fileDao().getByMeetingId(packageFile.meetingId)
+                        // 删除旧的物理文件
                         oldFiles.forEach { oldFile ->
-                            File(oldFile.localPath).delete()
+                            try {
+                                File(oldFile.localPath).delete()
+                                Timber.d("删除旧文件: ${oldFile.originalName}")
+                            } catch (e: Exception) {
+                                Timber.w(e, "删除旧文件失败: ${oldFile.originalName}")
+                            }
                         }
                     }
                     
@@ -289,8 +316,9 @@ class UnpackMeetingUseCase @Inject constructor(
         // 示例：
         // val participantsJson = unzipper.readFileFromZip(zipData, "participants.json")
         // if (participantsJson != null) {
-        //     val data = gson.fromJson(String(participantsJson), ParticipantsData::class.java)
-        //     return data.participants.map { it.toEntity(meetingId) }
+        //     val adapter = moshi.adapter(ParticipantsData::class.java)
+        //     val data = adapter.fromJson(String(participantsJson))
+        //     return data?.participants?.map { it.toEntity(meetingId) } ?: emptyList()
         // }
         return emptyList()
     }
@@ -312,8 +340,9 @@ class UnpackMeetingUseCase @Inject constructor(
         // 示例：
         // val agendasJson = unzipper.readFileFromZip(zipData, "agendas.json")
         // if (agendasJson != null) {
-        //     val data = gson.fromJson(String(agendasJson), AgendasData::class.java)
-        //     return data.agendas.map { it.toEntity(meetingId) }
+        //     val adapter = moshi.adapter(AgendasData::class.java)
+        //     val data = adapter.fromJson(String(agendasJson))
+        //     return data?.agendas?.map { it.toEntity(meetingId) } ?: emptyList()
         // }
         return emptyList()
     }

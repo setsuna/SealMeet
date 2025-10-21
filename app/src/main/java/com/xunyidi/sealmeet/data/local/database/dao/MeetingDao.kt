@@ -71,6 +71,12 @@ interface MeetingDao {
     fun getByTypeFlow(type: String): Flow<List<MeetingEntity>>
     
     /**
+     * 根据类型查询会议（非Flow）
+     */
+    @Query("SELECT * FROM meetings WHERE type = :type ORDER BY start_time DESC")
+    suspend fun getMeetingsByType(type: String): List<MeetingEntity>
+    
+    /**
      * 根据状态查询会议
      */
     @Query("SELECT * FROM meetings WHERE status = :status ORDER BY start_time DESC")
