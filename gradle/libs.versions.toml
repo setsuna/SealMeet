@@ -17,6 +17,7 @@ navigation = "2.8.5"
 moshi = "1.15.1"
 okio = "3.9.0"
 timber = "5.0.1"
+ksp = "2.0.21-1.0.28"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -59,6 +60,5 @@ timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "tim
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
-ksp = { id = "com.google.devtools.ksp", version = "2.0.21-1.0.29" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

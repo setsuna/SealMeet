@@ -2,7 +2,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
 }
@@ -62,12 +61,12 @@ dependencies {
     // Navigation
     implementation(libs.androidx.navigation.compose)
     
-    // Hilt
+    // Hilt (使用KSP)
     implementation(libs.hilt.android)
-    kapt(libs.hilt.compiler)
+    ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
     
-    // Room
+    // Room (使用KSP)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
@@ -75,7 +74,7 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
     
-    // Moshi
+    // Moshi (使用KSP)
     implementation(libs.moshi.kotlin)
     ksp(libs.moshi.codegen)
     
