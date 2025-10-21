@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -14,6 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
@@ -27,7 +31,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lint.kotlin.metadata.Visibility
+import com.xunyidi.sealmeet.presentation.settings.SettingsScreen
 import com.xunyidi.sealmeet.presentation.theme.AppColors
 import com.xunyidi.sealmeet.presentation.theme.TextInverse
 
@@ -43,6 +47,7 @@ fun LoginScreen(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    var showSettings by remember { mutableStateOf(false) }
 
     // 监听副作用
     LaunchedEffect(Unit) {
@@ -61,13 +66,14 @@ fun LoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppColors.bgPage),
-        contentAlignment = Alignment.Center
+            .background(AppColors.bgPage)
     ) {
+        // 中间的登录卡片
         Card(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
-                .wrapContentHeight(),
+                .wrapContentHeight()
+                .align(Alignment.Center),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = AppColors.bgCard
@@ -253,5 +259,27 @@ fun LoginScreen(
                 )
             }
         }
+        
+        // 左下角的设置按钮
+        IconButton(
+            onClick = { showSettings = true },
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "开发设置",
+                tint = AppColors.textSecondary,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+    }
+    
+    // 显示设置对话框
+    if (showSettings) {
+        SettingsScreen(
+            onDismiss = { showSettings = false }
+        )
     }
 }
