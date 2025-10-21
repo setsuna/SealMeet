@@ -7,6 +7,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
 import androidx.lifecycle.lifecycleScope
+import com.xunyidi.sealmeet.core.permission.PermissionRequester
+import com.xunyidi.sealmeet.core.permission.StoragePermissionHelper
 import com.xunyidi.sealmeet.data.sync.model.UnpackResult
 import com.xunyidi.sealmeet.domain.usecase.UnpackMeetingUseCase
 import com.xunyidi.sealmeet.presentation.screen.login.LoginScreen
@@ -22,13 +24,28 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var unpackMeetingUseCase: UnpackMeetingUseCase
+    
+    private lateinit var permissionRequester: PermissionRequester
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        // App启动时检查并解包
-        checkAndUnpackOnStart()
+        
+        permissionRequester = PermissionRequester(this) { granted ->
+            if (granted) {
+                Timber.i("存储权限已授予")
+                checkAndUnpackOnStart()
+            } else {
+                Timber.w("存储权限被拒绝")
+                Toast.makeText(this, "需要存储权限才能同步会议数据", Toast.LENGTH_LONG).show()
+            }
+        }
+        
+        if (StoragePermissionHelper.hasPermissions(this)) {
+            checkAndUnpackOnStart()
+        } else {
+            permissionRequester.requestPermissions()
+        }
 
         setContent {
             SealMeetTheme {
@@ -64,9 +81,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * App启动时检查并解包待处理的会议包
-     */
     private fun checkAndUnpackOnStart() {
         lifecycleScope.launch {
             try {
@@ -94,10 +108,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/**
- * 简单的Screen状态管理
- * 后续可替换为Navigation Compose
- */
 sealed class Screen {
     data object Login : Screen()
     data object MeetingList : Screen()
