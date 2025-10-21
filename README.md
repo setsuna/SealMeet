@@ -1,116 +1,191 @@
 # SealMeet - 离线会议平板应用
 
-## 项目简介
+## 📌 项目简介
 
 SealMeet 是一款用于涉密场所的离线会议平板应用，支持会议材料离线浏览、多会议管理、用户权限控制、操作审计等功能。
 
-## 技术栈
+## 🚀 快速开始
 
-- **架构模式**: MVI（Model-View-Intent）
-- **UI框架**: Jetpack Compose + Material3
-- **依赖注入**: Hilt
-- **数据库**: Room
-- **异步处理**: Kotlin Coroutines + Flow
-- **主题系统**: 动态换肤支持
+### 新会话快速了解项目
+- 📖 **[QUICKSTART.md](./QUICKSTART.md)** - 5分钟快速上手指南
+- 📋 **[DEVELOPMENT.md](./DEVELOPMENT.md)** - 完整开发规范
+- 🏗️ **[ARCHITECTURE.md](./ARCHITECTURE.md)** - 架构详细说明
 
-## 项目结构
-
-详见 [ARCHITECTURE.md](ARCHITECTURE.md)
-
-## 当前进度
-
-✅ **已完成**
-- [x] MVI基础框架搭建
-- [x] 主题系统（按照换肤规范实现）
-- [x] 依赖注入配置
-- [x] 项目基础目录结构
-- [x] 示例代码（SplashScreen）
-
-⏳ **待完成**
-- [ ] 配色方案应用（等待提供）
-- [ ] Room数据库设计
-- [ ] 具体业务页面
-- [ ] 文件管理模块
-- [ ] 加密模块
-- [ ] 审计日志模块
-- [ ] Key认证器集成
-
-## 如何提供配色方案
-
-请按照以下格式提供您的配色方案：
-
-### 1. 主品牌色（必填）
-
-```
-浅色模式：
-- 主色-默认态: #BE0110
-- 主色-悬停态: #9C0D0E
-- 主色-点击态: #7A0A0B
-- 主色-禁用态: #E6989D
-
-深色模式：
-- 主色-默认态: #FF4D5A
-- 主色-悬停态: #FF6B75
-- 主色-点击态: #FF8A93
-- 主色-禁用态: #5A2A2D
-```
-
-### 2. 辅助品牌色（可选）
-
-```
-浅色模式：
-- 辅助色-默认态: #1890FF
-- 辅助色-悬停态: #0B7DD6
-- 辅助色-点击态: #0960A8
-
-深色模式：
-- 辅助色-默认态: #3AA0FF
-- 辅助色-悬停态: #5BB0FF
-- 辅助色-点击态: #7CC0FF
-```
-
-### 3. 背景色（可选，不提供则使用默认）
-
-```
-浅色模式：
-- 页面主背景: #FAFAFA
-- 容器次级背景: #EFF2F5
-- 卡片背景: #FFFFFF
-- 悬浮层背景: #FFFFFF
-
-深色模式：
-- 页面主背景: #121212
-- 容器次级背景: #1E1E1E
-- 卡片背景: #2C2C2C
-- 悬浮层背景: #383838
-```
-
-### 注意事项
-
-- **颜色格式**: 请使用十六进制格式（如 #BE0110）
-- **对比度**: 请确保颜色对比度符合可读性要求
-- **固定颜色**: 功能语义色（成功/警告/错误/信息）和文字颜色已预设，无需提供
-- **自动计算**: 遮罩层、浅色背景等衍生颜色会自动计算，无需提供
-
-## 编译运行
+### 编译运行
 
 ```bash
-# 同步Gradle依赖
+# 克隆项目
+git clone <repository-url>
+
+# 同步依赖
 ./gradlew build
 
 # 运行应用
 ./gradlew installDebug
 ```
 
-## 开发规范
+## 🛠️ 技术栈
 
-1. **不要硬编码颜色**: 使用 `AppColors` 或 `MaterialTheme.colorScheme`
-2. **遵循MVI架构**: 每个Screen定义Contract（State/Intent/Effect）
-3. **使用Hilt注入**: ViewModel、Repository等使用依赖注入
-4. **Compose最佳实践**: 使用Modifier、remember、LaunchedEffect等
+- **语言**: Kotlin
+- **UI框架**: Jetpack Compose + Material3
+- **架构模式**: MVI (Model-View-Intent)
+- **依赖注入**: Hilt
+- **数据库**: Room
+- **异步处理**: Coroutines + Flow
+- **主题系统**: 动态换肤
 
-详见 [ARCHITECTURE.md](ARCHITECTURE.md)
+## 📋 核心功能
 
-## 联系方式
+- ✅ 离线会议材料浏览
+- ✅ Key认证器身份验证
+- ✅ 多会议权限隔离
+- ✅ 会议材料加密存储
+- ✅ 用户操作审计日志
+- ✅ 动态主题换肤（浅色/深色模式）
+
+## 📂 项目结构
+
+```
+app/src/main/java/com/xunyidi/sealmeet/
+├── core/mvi/              # 自建MVI框架
+├── data/                  # 数据层（Repository、Database、Model）
+├── domain/                # 业务逻辑层（UseCase）
+├── presentation/          # UI层（Screen、ViewModel、Theme）
+├── di/                    # 依赖注入模块
+└── MainActivity.kt        # 应用入口
+```
+
+详细目录说明请查看 [DEVELOPMENT.md](./DEVELOPMENT.md)
+
+## 🎨 当前进度
+
+### ✅ 已完成
+
+- [x] MVI基础框架搭建
+- [x] 主题系统（按换肤规范实现）
+- [x] 依赖注入配置（Hilt）
+- [x] 项目基础目录结构
+- [x] 示例代码（SplashScreen）
+- [x] 开发规范文档
+
+### ⏳ 待开发
+
+- [ ] Room数据库实体定义
+- [ ] Repository层实现
+- [ ] 会议列表页面
+- [ ] 会议详情页面
+- [ ] 文件管理模块
+- [ ] 加密模块
+- [ ] 审计日志模块
+- [ ] Key认证器集成
+- [ ] 材料预览功能（永中Office SDK）
+
+## 📖 开发指南
+
+### MVI架构核心
+
+每个Screen需要定义：
+1. **Contract** - 集中定义State、Intent、Effect
+2. **ViewModel** - 继承BaseViewModel，处理业务逻辑
+3. **Screen** - Composable UI，响应State变化
+
+示例：
+```kotlin
+// 1. Contract
+object MyScreenContract {
+    data class State(...) : UiState
+    sealed interface Intent : UiIntent { ... }
+    sealed interface Effect : UiEffect { ... }
+}
+
+// 2. ViewModel
+@HiltViewModel
+class MyViewModel @Inject constructor(...) 
+    : BaseViewModel<State, Intent, Effect>(...) {
+    override fun handleIntent(intent: Intent) { ... }
+}
+
+// 3. Screen
+@Composable
+fun MyScreen(viewModel: MyViewModel = hiltViewModel()) {
+    val state by viewModel.uiState.collectAsState()
+    // UI内容
+}
+```
+
+### 主题系统使用
+
+```kotlin
+// 使用可配置颜色（随主题变化）
+Box(modifier = Modifier.background(AppColors.primaryDefault))
+Text(text = "标题", color = AppColors.textPrimary)
+
+// 使用固定颜色（不随主题变化）
+Text(text = "成功", color = AppColors.success)
+
+// 切换主题
+ThemeManager.toggleTheme()
+```
+
+⚠️ **严禁硬编码颜色值！**
+
+详细规范请查看 [DEVELOPMENT.md](./DEVELOPMENT.md)
+
+## 🔐 涉密相关
+
+### Key认证器
+- 平板通过USB Key认证用户身份
+- 一个平板对应一个Key
+- Key拔出后清空内存中的敏感数据
+
+### 会议隔离
+- 不同会议材料严格隔离
+- 基于用户权限过滤可见会议
+- 会议材料独立加密存储
+
+### 审计日志
+- 记录所有材料访问操作
+- 包含用户ID、会议ID、操作时间
+- 充电时加密回传服务器
+
+## 🎯 开发规范要点
+
+### 必须遵守
+- ✅ 使用MVI架构（Contract + ViewModel + Screen）
+- ✅ 使用`AppColors`或`MaterialTheme.colorScheme`获取颜色
+- ✅ ViewModel使用`@HiltViewModel`注解
+- ✅ State必须是不可变的`data class`
+- ✅ 使用Timber记录日志
+
+### 严禁事项
+- ❌ 硬编码颜色值
+- ❌ 在UI层直接调用Repository
+- ❌ 使用`!!`（非空断言）
+- ❌ 空catch块（捕获异常不处理）
+- ❌ 在ViewModel中直接操作UI
+
+完整规范请查看 [DEVELOPMENT.md](./DEVELOPMENT.md)
+
+## 📚 文档索引
+
+| 文档 | 说明 | 适用场景 |
+|------|------|---------|
+| [QUICKSTART.md](./QUICKSTART.md) | 快速参考指南 | 新会话快速上手 |
+| [DEVELOPMENT.md](./DEVELOPMENT.md) | 完整开发规范 | 详细开发指导 |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | 架构详细说明 | 理解项目架构 |
+
+## 🤝 配色方案
+
+当前使用默认配色：
+- **浅色模式**: 红色系主色 + 蓝色系辅助色
+- **深色模式**: 高亮红色系主色 + 高亮蓝色系辅助色
+
+如需自定义配色，请在 `presentation/theme/Color.kt` 中修改颜色定义。
+
+## 📞 联系方式
 
 如有问题，请联系开发团队。
+
+---
+
+**最后更新**: 2025年10月21日
