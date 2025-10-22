@@ -47,6 +47,31 @@ data class MeetingEntity(
     @ColumnInfo(name = "max_participants")
     val maxParticipants: Int? = null,
     
+    // 🆕 新增字段 - 与后端同步
+    @ColumnInfo(name = "password")
+    val password: String? = null,
+    
+    @ColumnInfo(name = "expiry_type")
+    val expiryType: String = "none", // none, today, custom
+    
+    @ColumnInfo(name = "expiry_date")
+    val expiryDate: Long? = null, // 时间戳（毫秒）
+    
+    @ColumnInfo(name = "sign_in_type")
+    val signInType: String = "none", // none, manual, password
+    
+    @ColumnInfo(name = "organizer")
+    val organizer: String? = null,
+    
+    @ColumnInfo(name = "organizer_name")
+    val organizerName: String? = null,
+    
+    @ColumnInfo(name = "host")
+    val host: String? = null,
+    
+    @ColumnInfo(name = "host_name")
+    val hostName: String? = null,
+    
     @ColumnInfo(name = "created_by")
     val createdBy: String,
     

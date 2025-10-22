@@ -15,6 +15,12 @@ import com.xunyidi.sealmeet.data.local.database.entity.MeetingParticipantEntity
  * SealMeet 应用数据库
  * 
  * 包含会议、参会人员、议程、文件等数据表
+ * 
+ * 版本历史：
+ * - v1: 初始版本
+ * - v2: 添加参会人员、议程等扩展功能
+ * - v3: 会议表新增字段：password, expiry_type, expiry_date, sign_in_type, 
+ *       organizer, organizer_name, host, host_name
  */
 @Database(
     entities = [
@@ -23,7 +29,7 @@ import com.xunyidi.sealmeet.data.local.database.entity.MeetingParticipantEntity
         MeetingAgendaEntity::class,
         MeetingFileEntity::class
     ],
-    version = 2, // 增加版本号
+    version = 3, // 🆕 增加版本号：v2 -> v3
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

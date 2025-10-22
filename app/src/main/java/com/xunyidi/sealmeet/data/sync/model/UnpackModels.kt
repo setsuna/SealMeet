@@ -125,6 +125,31 @@ data class MeetingData(
     @Json(name = "max_participants")
     val maxParticipants: Int? = null,
     
+    // 🆕 新增字段 - 与后端同步
+    @Json(name = "password")
+    val password: String? = null,
+    
+    @Json(name = "expiry_type")
+    val expiryType: String = "none",
+    
+    @Json(name = "expiry_date")
+    val expiryDate: String? = null,
+    
+    @Json(name = "sign_in_type")
+    val signInType: String = "none",
+    
+    @Json(name = "organizer")
+    val organizer: String? = null,
+    
+    @Json(name = "organizer_name")
+    val organizerName: String? = null,
+    
+    @Json(name = "host")
+    val host: String? = null,
+    
+    @Json(name = "host_name")
+    val hostName: String? = null,
+    
     @Json(name = "created_by")
     val createdBy: String,
     
