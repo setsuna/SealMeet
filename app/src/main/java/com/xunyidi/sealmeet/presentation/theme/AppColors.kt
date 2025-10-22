@@ -57,6 +57,10 @@ object AppColors {
     val border: Color
         @Composable get() = ThemeManager.getBorderColor()
     
+    // 分割线
+    val divider: Color
+        @Composable get() = if (ThemeManager.getCurrentConfig().isDark) ColorDividerDark else ColorDivider
+    
     // 自动计算颜色
     val primaryOverlay: Color
         @Composable get() = ColorUtils.getOverlayColor(primaryDefault)

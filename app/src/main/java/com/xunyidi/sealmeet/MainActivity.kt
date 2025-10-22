@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.lifecycleScope
 import com.xunyidi.sealmeet.core.permission.PermissionRequester
 import com.xunyidi.sealmeet.core.permission.StoragePermissionHelper
@@ -13,6 +14,7 @@ import com.xunyidi.sealmeet.data.sync.model.UnpackResult
 import com.xunyidi.sealmeet.domain.usecase.UnpackMeetingUseCase
 import com.xunyidi.sealmeet.presentation.screen.login.LoginScreen
 import com.xunyidi.sealmeet.presentation.screen.meetinglist.MeetingListScreen
+import com.xunyidi.sealmeet.presentation.screen.meetingdetail.MeetingDetailScreen
 import com.xunyidi.sealmeet.presentation.theme.SealMeetTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -52,9 +54,11 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             SealMeetTheme {
-                var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
+                var currentScreen by rememberSaveable(stateSaver = ScreenSaver) { 
+                    mutableStateOf<Screen>(Screen.Login) 
+                }
 
-                when (currentScreen) {
+                when (val screen = currentScreen) {
                     is Screen.Login -> {
                         LoginScreen(
                             onNavigateToHome = {
@@ -71,11 +75,15 @@ class MainActivity : ComponentActivity() {
                                 currentScreen = Screen.Login
                             },
                             onNavigateToDetail = { meetingId ->
-                                Toast.makeText(
-                                    this,
-                                    "打开会议: $meetingId",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                currentScreen = Screen.MeetingDetail(meetingId)
+                            }
+                        )
+                    }
+                    is Screen.MeetingDetail -> {
+                        MeetingDetailScreen(
+                            meetingId = screen.meetingId,
+                            onNavigateBack = {
+                                currentScreen = Screen.MeetingList
                             }
                         )
                     }
@@ -114,4 +122,29 @@ class MainActivity : ComponentActivity() {
 sealed class Screen {
     data object Login : Screen()
     data object MeetingList : Screen()
+    data class MeetingDetail(val meetingId: String) : Screen()
 }
+
+/**
+ * Screen状态保存器，用于在Activity重建时保持状态
+ */
+val ScreenSaver = androidx.compose.runtime.saveable.Saver<Screen, String>(
+    save = { screen ->
+        when (screen) {
+            is Screen.Login -> "login"
+            is Screen.MeetingList -> "meeting_list"
+            is Screen.MeetingDetail -> "meeting_detail:${screen.meetingId}"
+        }
+    },
+    restore = { savedValue ->
+        when {
+            savedValue == "login" -> Screen.Login
+            savedValue == "meeting_list" -> Screen.MeetingList
+            savedValue.startsWith("meeting_detail:") -> {
+                val meetingId = savedValue.substringAfter("meeting_detail:")
+                Screen.MeetingDetail(meetingId)
+            }
+            else -> Screen.Login
+        }
+    }
+)
