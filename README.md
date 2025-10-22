@@ -7,7 +7,6 @@ SealMeet 是一款用于涉密场所的离线会议平板应用，支持会议�
 ## 🚀 快速开始
 
 ### 新会话快速了解项目
-- 📖 **[QUICKSTART.md](./QUICKSTART.md)** - 5分钟快速上手指南
 - 📋 **[DEVELOPMENT.md](./DEVELOPMENT.md)** - 完整开发规范
 - 🏗️ **[ARCHITECTURE.md](./ARCHITECTURE.md)** - 架构详细说明
 
@@ -170,7 +169,6 @@ ThemeManager.toggleTheme()
 
 | 文档 | 说明 | 适用场景 |
 |------|------|---------|
-| [QUICKSTART.md](./QUICKSTART.md) | 快速参考指南 | 新会话快速上手 |
 | [DEVELOPMENT.md](./DEVELOPMENT.md) | 完整开发规范 | 详细开发指导 |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 架构详细说明 | 理解项目架构 |
 

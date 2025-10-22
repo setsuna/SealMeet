@@ -99,6 +99,24 @@ fun SettingsScreen(
                 
                 Divider()
                 
+                // 允许服务器配置覆盖开关
+                SettingItem(
+                    title = "允许服务器配置覆盖",
+                    description = if (state.allowServerConfigOverride) {
+                        "服务器配置会覆盖本地设置"
+                    } else {
+                        "保持本地配置，忽略服务器配置"
+                    },
+                    checked = state.allowServerConfigOverride,
+                    onCheckedChange = { enabled ->
+                        viewModel.handleIntent(
+                            SettingsContract.Intent.ToggleServerConfigOverride(enabled)
+                        )
+                    }
+                )
+                
+                Divider()
+                
                 // 清空数据按钮
                 Button(
                     onClick = { showClearDataDialog = true },

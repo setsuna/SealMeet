@@ -27,6 +27,7 @@ class AppPreferences @Inject constructor(
         // 配置键
         private val KEY_INCREMENTAL_UPDATE = booleanPreferencesKey("incremental_update_enabled")
         private val KEY_KEEP_TEMP_FILES = booleanPreferencesKey("keep_temp_files_enabled")
+        private val KEY_ALLOW_SERVER_OVERRIDE = booleanPreferencesKey("allow_server_config_override")
     }
     
     /**
@@ -50,6 +51,16 @@ class AppPreferences @Inject constructor(
         }
     
     /**
+     * 允许服务器配置覆盖本地配置
+     * true: 服务器下发的config.json会覆盖本地配置（默认）
+     * false: 忽略服务器配置，保持本地配置
+     */
+    val allowServerConfigOverride: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[KEY_ALLOW_SERVER_OVERRIDE] ?: true // 默认允许
+        }
+    
+    /**
      * 设置增量更新开关
      */
     suspend fun setIncrementalUpdateEnabled(enabled: Boolean) {
@@ -64,6 +75,15 @@ class AppPreferences @Inject constructor(
     suspend fun setKeepTempFilesEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[KEY_KEEP_TEMP_FILES] = enabled
+        }
+    }
+    
+    /**
+     * 设置允许服务器配置覆盖开关
+     */
+    suspend fun setAllowServerConfigOverride(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_ALLOW_SERVER_OVERRIDE] = enabled
         }
     }
 }

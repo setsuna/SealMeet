@@ -44,6 +44,7 @@ class UnpackMeetingUseCase @Inject constructor(
     private val database: AppDatabase,
     private val syncFileManager: SyncFileManager,
     private val appPreferences: AppPreferences,
+    private val configApplyUseCase: ConfigApplyUseCase,
     private val context: android.content.Context
 ) {
     
@@ -150,7 +151,10 @@ class UnpackMeetingUseCase @Inject constructor(
                     }
                 }
                 
-                // 7. 尝试解析扩展数据（参会人员和议程）
+                // 7. 尝试解析会议完整信息
+                val meetingData = parseMeetingData(zipData)
+                
+                // 8. 尝试解析扩展数据（参会人员和议程）
                 val participants = parseParticipantsData(zipData, packageFile.meetingId)
                 val agendas = parseAgendasData(zipData, packageFile.meetingId)
                 
@@ -221,21 +225,44 @@ class UnpackMeetingUseCase @Inject constructor(
                     }
                     
                     // 插入会议信息
-                    // TODO: 从数据源获取完整的会议信息（开始时间、结束时间、类型等）
-                    val meetingEntity = MeetingEntity(
-                        id = manifest.meetingId,
-                        name = manifest.meetingName,
-                        startTime = 0, // TODO: 从完整数据源获取
-                        endTime = 0,
-                        type = "tablet", // TODO: 从完整数据源获取
-                        status = "preparation",
-                        securityLevel = "internal",
-                        createdBy = "",
-                        createdByName = "",
-                        createdAt = System.currentTimeMillis(),
-                        updatedAt = System.currentTimeMillis(),
-                        packageChecksum = checksum?.packageChecksum
-                    )
+                    // 优先使用 meeting.json 的完整数据，如果没有则使用 manifest 的基本信息
+                    val meetingEntity = if (meetingData != null) {
+                        MeetingEntity(
+                            id = meetingData.id,
+                            name = meetingData.name,
+                            startTime = parseIsoTimestamp(meetingData.startTime),
+                            endTime = parseIsoTimestamp(meetingData.endTime),
+                            type = meetingData.type,
+                            status = meetingData.status,
+                            securityLevel = meetingData.securityLevel,
+                            isDraft = meetingData.isDraft,
+                            maxParticipants = meetingData.maxParticipants,
+                            location = meetingData.location,
+                            description = meetingData.description,
+                            category = meetingData.category,
+                            createdBy = meetingData.createdBy,
+                            createdByName = meetingData.createdByName,
+                            createdAt = parseIsoTimestamp(meetingData.createdAt),
+                            updatedAt = parseIsoTimestamp(meetingData.updatedAt),
+                            packageChecksum = checksum?.packageChecksum
+                        )
+                    } else {
+                        // 向后兼容：使用 manifest 的基本信息
+                        MeetingEntity(
+                            id = manifest.meetingId,
+                            name = manifest.meetingName,
+                            startTime = 0,
+                            endTime = 0,
+                            type = "tablet",
+                            status = "preparation",
+                            securityLevel = "internal",
+                            createdBy = "",
+                            createdByName = "",
+                            createdAt = System.currentTimeMillis(),
+                            updatedAt = System.currentTimeMillis(),
+                            packageChecksum = checksum?.packageChecksum
+                        )
+                    }
                     
                     database.meetingDao().insert(meetingEntity)
                     
@@ -294,6 +321,18 @@ class UnpackMeetingUseCase @Inject constructor(
      * 批量解包所有待处理的包文件
      */
     suspend fun unpackAllPendingPackages(): List<UnpackResult> = withContext(Dispatchers.IO) {
+        // 在开始解包前，先检查并应用服务器配置
+        val configApplied = try {
+            configApplyUseCase.checkAndApplyConfig()
+        } catch (e: Exception) {
+            Timber.e(e, "检查服务器配置失败")
+            false
+        }
+        
+        if (configApplied) {
+            Timber.i("已应用服务器配置")
+        }
+        
         val packageFiles = syncFileManager.scanPackageFiles()
         
         if (packageFiles.isEmpty()) {
@@ -318,51 +357,150 @@ class UnpackMeetingUseCase @Inject constructor(
     }
     
     /**
+     * 解析会议完整信息
+     * 从 ZIP 中读取 meeting.json
+     */
+    private fun parseMeetingData(zipData: ByteArray): com.xunyidi.sealmeet.data.sync.model.MeetingData? {
+        return try {
+            val meetingJson = unzipper.readFileFromZip(zipData, "meeting.json")
+            if (meetingJson != null) {
+                val adapter = moshi.adapter(com.xunyidi.sealmeet.data.sync.model.MeetingData::class.java)
+                val data = adapter.fromJson(String(meetingJson))
+                if (data != null) {
+                    Timber.d("解析 meeting.json 成功: ${data.name}")
+                } else {
+                    Timber.w("meeting.json 解析结果为null")
+                }
+                data
+            } else {
+                Timber.d("meeting.json 不存在，使用 manifest 的基本信息")
+                null
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "meeting.json 解析失败，使用 manifest 的基本信息")
+            null
+        }
+    }
+    
+    /**
      * 解析参会人员数据
-     * 
-     * TODO: 根据实际数据格式实现解析逻辑
-     * 可能的数据来源：
-     * 1. participants.json 文件
-     * 2. manifest.json 中的 participants 字段
-     * 3. 其他自定义文件
+     * 从 ZIP 中读取 participants.json
      */
     private fun parseParticipantsData(
         zipData: ByteArray,
         meetingId: String
     ): List<MeetingParticipantEntity> {
-        // TODO: 实现参会人员数据解析
-        // 示例：
-        // val participantsJson = unzipper.readFileFromZip(zipData, "participants.json")
-        // if (participantsJson != null) {
-        //     val adapter = moshi.adapter(ParticipantsData::class.java)
-        //     val data = adapter.fromJson(String(participantsJson))
-        //     return data?.participants?.map { it.toEntity(meetingId) } ?: emptyList()
-        // }
-        return emptyList()
+        return try {
+            val participantsJson = unzipper.readFileFromZip(zipData, "participants.json")
+            if (participantsJson != null) {
+                val adapter = moshi.adapter(com.xunyidi.sealmeet.data.sync.model.ParticipantsWrapper::class.java)
+                val data = adapter.fromJson(String(participantsJson))
+                if (data != null) {
+                    Timber.d("解析 participants.json 成功: ${data.participants.size} 人")
+                    // 转换为 Entity
+                    data.participants.map { participant ->
+                        MeetingParticipantEntity(
+                            id = participant.id,
+                            meetingId = meetingId,
+                            userId = participant.userId,
+                            userName = participant.userName,
+                            email = participant.email,
+                            department = participant.department,
+                            role = participant.role,
+                            status = participant.status,
+                            password = participant.password, // TODO: 如需要可加密存储
+                            joinedAt = parseIsoTimestampOrNull(participant.joinedAt),
+                            leftAt = parseIsoTimestampOrNull(participant.leftAt),
+                            createdAt = parseIsoTimestamp(participant.createdAt),
+                            updatedAt = parseIsoTimestamp(participant.updatedAt)
+                        )
+                    }
+                } else {
+                    Timber.w("participants.json 解析结果为null")
+                    emptyList()
+                }
+            } else {
+                Timber.d("participants.json 不存在")
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "participants.json 解析失败")
+            emptyList()
+        }
     }
     
     /**
      * 解析议程数据
-     * 
-     * TODO: 根据实际数据格式实现解析逻辑
-     * 可能的数据来源：
-     * 1. agendas.json 文件
-     * 2. manifest.json 中的 agendas 字段（目前只有ID映射）
-     * 3. 其他自定义文件
+     * 从 ZIP 中读取 agendas.json
      */
     private fun parseAgendasData(
         zipData: ByteArray,
         meetingId: String
     ): List<MeetingAgendaEntity> {
-        // TODO: 实现议程数据解析
-        // 示例：
-        // val agendasJson = unzipper.readFileFromZip(zipData, "agendas.json")
-        // if (agendasJson != null) {
-        //     val adapter = moshi.adapter(AgendasData::class.java)
-        //     val data = adapter.fromJson(String(agendasJson))
-        //     return data?.agendas?.map { it.toEntity(meetingId) } ?: emptyList()
-        // }
-        return emptyList()
+        return try {
+            val agendasJson = unzipper.readFileFromZip(zipData, "agendas.json")
+            if (agendasJson != null) {
+                val adapter = moshi.adapter(com.xunyidi.sealmeet.data.sync.model.AgendasWrapper::class.java)
+                val data = adapter.fromJson(String(agendasJson))
+                if (data != null) {
+                    Timber.d("解析 agendas.json 成功: ${data.agendas.size} 个议程")
+                    // 转换为 Entity
+                    data.agendas.map { agenda ->
+                        MeetingAgendaEntity(
+                            id = agenda.id,
+                            meetingId = meetingId,
+                            title = agenda.title,
+                            description = agenda.description,
+                            duration = agenda.duration,
+                            presenter = agenda.presenter,
+                            orderNum = agenda.orderNum,
+                            status = agenda.status,
+                            startedAt = parseIsoTimestampOrNull(agenda.startedAt),
+                            completedAt = parseIsoTimestampOrNull(agenda.completedAt),
+                            createdAt = parseIsoTimestamp(agenda.createdAt),
+                            updatedAt = parseIsoTimestamp(agenda.updatedAt)
+                        )
+                    }
+                } else {
+                    Timber.w("agendas.json 解析结果为null")
+                    emptyList()
+                }
+            } else {
+                Timber.d("agendas.json 不存在")
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "agendas.json 解析失败")
+            emptyList()
+        }
+    }
+    
+    /**
+     * 解析 ISO8601 时间戳为毫秒
+     */
+    private fun parseIsoTimestamp(isoString: String): Long {
+        return try {
+            java.time.Instant.parse(isoString).toEpochMilli()
+        } catch (e: Exception) {
+            Timber.w(e, "时间戳解析失败: $isoString")
+            System.currentTimeMillis()
+        }
+    }
+    
+    /**
+     * 解析可空的 ISO8601 时间戳
+     */
+    private fun parseIsoTimestampOrNull(isoString: String?): Long? {
+        return if (isoString != null) {
+            try {
+                java.time.Instant.parse(isoString).toEpochMilli()
+            } catch (e: Exception) {
+                Timber.w(e, "时间戳解析失败: $isoString")
+                null
+            }
+        } else {
+            null
+        }
     }
     
     /**

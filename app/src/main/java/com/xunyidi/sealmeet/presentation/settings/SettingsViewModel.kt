@@ -35,6 +35,9 @@ class SettingsViewModel @Inject constructor(
             is SettingsContract.Intent.ToggleKeepTempFiles -> {
                 toggleKeepTempFiles(intent.enabled)
             }
+            is SettingsContract.Intent.ToggleServerConfigOverride -> {
+                toggleServerConfigOverride(intent.enabled)
+            }
             is SettingsContract.Intent.ClearAllData -> {
                 clearAllData()
             }
@@ -57,6 +60,13 @@ class SettingsViewModel @Inject constructor(
             launch {
                 appPreferences.keepTempFilesEnabled.collect { enabled ->
                     updateState { copy(keepTempFilesEnabled = enabled) }
+                }
+            }
+            
+            // 监听允许服务器配置覆盖
+            launch {
+                appPreferences.allowServerConfigOverride.collect { enabled ->
+                    updateState { copy(allowServerConfigOverride = enabled) }
                 }
             }
         }
@@ -99,6 +109,27 @@ class SettingsViewModel @Inject constructor(
                 Timber.i("保留临时文件开关: $enabled")
             } catch (e: Exception) {
                 Timber.e(e, "切换保留临时文件开关失败")
+                sendEffect(SettingsContract.Effect.ShowToast("设置失败"))
+            }
+        }
+    }
+    
+    /**
+     * 切换允许服务器配置覆盖开关
+     */
+    private fun toggleServerConfigOverride(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setAllowServerConfigOverride(enabled)
+                val message = if (enabled) {
+                    "已启用服务器配置覆盖"
+                } else {
+                    "已关闭服务器配置覆盖，保持本地设置"
+                }
+                sendEffect(SettingsContract.Effect.ShowToast(message))
+                Timber.i("允许服务器配置覆盖开关: $enabled")
+            } catch (e: Exception) {
+                Timber.e(e, "切换服务器配置覆盖开关失败")
                 sendEffect(SettingsContract.Effect.ShowToast("设置失败"))
             }
         }
