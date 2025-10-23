@@ -91,19 +91,20 @@ fun LoginScreen(
             ) {
                 // Logo和标题
                 Text(
-                    text = "SealMeet",
+                    text = "讯意迪涉密会议文档综合管控系统",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
                     color = AppColors.primaryDefault
                 )
-                
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Text(
-                    text = "离线会议平板",
+                    text = "特殊会议登录",
                     fontSize = 16.sp,
                     color = AppColors.textSecondary
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
 
                 // 用户名输入框
                 OutlinedTextField(
@@ -199,7 +200,7 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                //Spacer(modifier = Modifier.height(8.dp))
 
                 // 登录按钮
                 Button(
@@ -259,7 +260,7 @@ fun LoginScreen(
                 )
             }
         }
-        
+
         // 左下角的设置按钮
         IconButton(
             onClick = { showSettings = true },
