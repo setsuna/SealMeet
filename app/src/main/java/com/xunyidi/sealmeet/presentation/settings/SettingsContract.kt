@@ -16,6 +16,7 @@ object SettingsContract {
         val incrementalUpdateEnabled: Boolean = true,
         val keepTempFilesEnabled: Boolean = false,
         val allowServerConfigOverride: Boolean = true,
+        val developerModeEnabled: Boolean = false,
         val isLoading: Boolean = false
     ) : UiState
     
@@ -37,6 +38,11 @@ object SettingsContract {
          * 切换允许服务器配置覆盖开关
          */
         data class ToggleServerConfigOverride(val enabled: Boolean) : Intent
+        
+        /**
+         * 切换开发者模式开关
+         */
+        data class ToggleDeveloperMode(val enabled: Boolean) : Intent
         
         /**
          * 清空所有数据

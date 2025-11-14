@@ -1,15 +1,23 @@
 package com.xunyidi.sealmeet.data.sync
 
 import android.os.Environment
+import com.xunyidi.sealmeet.data.preferences.AppPreferences
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * 同步文件管理器
  * 
  * 负责管理同步目录、检测待同步文件、全局锁机制等
  */
-class SyncFileManager {
+@Singleton
+class SyncFileManager @Inject constructor(
+    private val appPreferences: AppPreferences
+) {
     
     companion object {
         private const val SYNC_LOCK_FILE = ".sync_lock"
@@ -18,10 +26,23 @@ class SyncFileManager {
     }
     
     /**
-     * 获取同步目录（Download目录）
+     * 获取同步目录
+     * 开发者模式： Download 目录
+     * 生产者模式： /data/userdata/meetings
      */
     fun getSyncDirectory(): File {
-        return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        // 读取开发者模式配置
+        val isDeveloperMode = runBlocking {
+            appPreferences.developerModeEnabled.first()
+        }
+        
+        return if (isDeveloperMode) {
+            // 开发者模式：使用 Download 目录
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        } else {
+            // 生产者模式：使用 /data/userdata/meetings
+            File("/data/userdata/meetings")
+        }
     }
     
     /**

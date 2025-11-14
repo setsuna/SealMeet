@@ -38,6 +38,9 @@ class SettingsViewModel @Inject constructor(
             is SettingsContract.Intent.ToggleServerConfigOverride -> {
                 toggleServerConfigOverride(intent.enabled)
             }
+            is SettingsContract.Intent.ToggleDeveloperMode -> {
+                toggleDeveloperMode(intent.enabled)
+            }
             is SettingsContract.Intent.ClearAllData -> {
                 clearAllData()
             }
@@ -67,6 +70,13 @@ class SettingsViewModel @Inject constructor(
             launch {
                 appPreferences.allowServerConfigOverride.collect { enabled ->
                     updateState { copy(allowServerConfigOverride = enabled) }
+                }
+            }
+            
+            // 监听开发者模式
+            launch {
+                appPreferences.developerModeEnabled.collect { enabled ->
+                    updateState { copy(developerModeEnabled = enabled) }
                 }
             }
         }
@@ -130,6 +140,27 @@ class SettingsViewModel @Inject constructor(
                 Timber.i("允许服务器配置覆盖开关: $enabled")
             } catch (e: Exception) {
                 Timber.e(e, "切换服务器配置覆盖开关失败")
+                sendEffect(SettingsContract.Effect.ShowToast("设置失败"))
+            }
+        }
+    }
+    
+    /**
+     * 切换开发者模式开关
+     */
+    private fun toggleDeveloperMode(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setDeveloperModeEnabled(enabled)
+                val message = if (enabled) {
+                    "已启用开发者模式，使用 Download 目录"
+                } else {
+                    "已关闭开发者模式，使用 /data/userdata/meetings"
+                }
+                sendEffect(SettingsContract.Effect.ShowToast(message))
+                Timber.i("开发者模式开关: $enabled")
+            } catch (e: Exception) {
+                Timber.e(e, "切换开发者模式开关失败")
                 sendEffect(SettingsContract.Effect.ShowToast("设置失败"))
             }
         }

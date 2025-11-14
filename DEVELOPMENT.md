@@ -534,8 +534,40 @@ viewModelScope.launch {
 
 ## 📦 依赖注入规范
 
-### Module定义
+### Hilt 依赖注入最佳实践
 
+#### 1. 优先使用 @Inject 构造函数
+
+对于自己编写的类，优先使用 `@Inject` 构造函数，Hilt 会自动提供依赖：
+
+```kotlin
+// ✅ 推荐：使用 @Inject 构造函数
+@Singleton
+class SyncFileManager @Inject constructor(
+    private val appPreferences: AppPreferences
+) {
+    // ...
+}
+
+// ✅ 推荐：ViewModel 使用 @HiltViewModel
+@HiltViewModel
+class MeetingListViewModel @Inject constructor(
+    private val getMeetingListUseCase: GetMeetingListUseCase
+) : BaseViewModel<...>(...) {
+    // ...
+}
+```
+
+**关键点**：
+- 使用 `@Inject` 构造函数后，**不需要**在 Module 中使用 `@Provides` 方法
+- Hilt 会自动识别并提供这些类的实例
+- `@Singleton` 注解确保单例模式
+
+#### 2. 使用 @Provides 方法的场景
+
+只在以下情况使用 `@Provides` 方法：
+
+**场景 1：提供接口实现**
 ```kotlin
 @Module
 @InstallIn(SingletonComponent::class)
@@ -546,10 +578,88 @@ object RepositoryModule {
     fun provideMeetingRepository(
         meetingDao: MeetingDao,
         fileManager: FileManager
-    ): MeetingRepository {
-        return MeetingRepositoryImpl(meetingDao, fileManager)
+    ): MeetingRepository {  // 返回接口类型
+        return MeetingRepositoryImpl(meetingDao, fileManager)  // 返回具体实现
     }
 }
+```
+
+**场景 2：提供第三方库的类**
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object DatabaseModule {
+    
+    @Provides
+    @Singleton
+    fun provideAppDatabase(
+        @ApplicationContext context: Context
+    ): AppDatabase {
+        return Room.databaseBuilder(
+            context,
+            AppDatabase::class.java,
+            "sealmeet_database"
+        ).build()
+    }
+}
+```
+
+**场景 3：需要复杂的构造逻辑**
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object NetworkModule {
+    
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(): OkHttpClient {
+        return OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(LoggingInterceptor())
+            .build()
+    }
+}
+```
+
+#### 3. Module 定义规范
+
+```kotlin
+// ✅ 正确：只提供必要的依赖
+@Module
+@InstallIn(SingletonComponent::class)
+object SyncModule {
+    // 如果所有类都使用 @Inject 构造函数，Module 可以为空
+    // 或者只提供接口、第三方库等无法使用 @Inject 的依赖
+}
+
+// ❌ 错误：重复提供已有 @Inject 的类
+@Module
+@InstallIn(SingletonComponent::class)
+object SyncModule {
+    
+    @Provides
+    @Singleton
+    fun provideSyncFileManager(...): SyncFileManager {  // 不需要！
+        return SyncFileManager(...)  // SyncFileManager 已经有 @Inject
+    }
+}
+```
+
+#### 4. 作用域选择
+
+- `@Singleton`：应用级单例，整个应用只有一个实例
+- `@ActivityScoped`：Activity 级作用域
+- `@ViewModelScoped`：ViewModel 级作用域
+
+```kotlin
+// 应用级单例
+@Singleton
+class AppPreferences @Inject constructor(...) { }
+
+// ViewModel 级作用域
+@HiltViewModel
+class MeetingListViewModel @Inject constructor(...) : BaseViewModel<...>(...)
 ```
 
 ### ViewModel注入

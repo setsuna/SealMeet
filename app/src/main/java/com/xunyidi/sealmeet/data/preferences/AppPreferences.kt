@@ -28,6 +28,7 @@ class AppPreferences @Inject constructor(
         private val KEY_INCREMENTAL_UPDATE = booleanPreferencesKey("incremental_update_enabled")
         private val KEY_KEEP_TEMP_FILES = booleanPreferencesKey("keep_temp_files_enabled")
         private val KEY_ALLOW_SERVER_OVERRIDE = booleanPreferencesKey("allow_server_config_override")
+        private val KEY_DEVELOPER_MODE = booleanPreferencesKey("developer_mode_enabled")
     }
     
     /**
@@ -61,6 +62,16 @@ class AppPreferences @Inject constructor(
         }
     
     /**
+     * 开发者模式开关
+     * true: 开发者模式，从 Download 目录读取会议包
+     * false: 生产者模式，从 /data/userdata/meetings 读取会议包（默认）
+     */
+    val developerModeEnabled: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[KEY_DEVELOPER_MODE] ?: false // 默认为生产者模式
+        }
+    
+    /**
      * 设置增量更新开关
      */
     suspend fun setIncrementalUpdateEnabled(enabled: Boolean) {
@@ -84,6 +95,15 @@ class AppPreferences @Inject constructor(
     suspend fun setAllowServerConfigOverride(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[KEY_ALLOW_SERVER_OVERRIDE] = enabled
+        }
+    }
+    
+    /**
+     * 设置开发者模式开关
+     */
+    suspend fun setDeveloperModeEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_DEVELOPER_MODE] = enabled
         }
     }
 }

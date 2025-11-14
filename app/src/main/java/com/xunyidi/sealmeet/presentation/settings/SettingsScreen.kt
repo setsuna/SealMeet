@@ -117,6 +117,24 @@ fun SettingsScreen(
                 
                 Divider()
                 
+                // 开发者模式开关
+                SettingItem(
+                    title = "开发者模式",
+                    description = if (state.developerModeEnabled) {
+                        "已启用，使用 Download 目录"
+                    } else {
+                        "已关闭，使用 /data/userdata/meetings"
+                    },
+                    checked = state.developerModeEnabled,
+                    onCheckedChange = { enabled ->
+                        viewModel.handleIntent(
+                            SettingsContract.Intent.ToggleDeveloperMode(enabled)
+                        )
+                    }
+                )
+                
+                Divider()
+                
                 // 清空数据按钮
                 Button(
                     onClick = { showClearDataDialog = true },
