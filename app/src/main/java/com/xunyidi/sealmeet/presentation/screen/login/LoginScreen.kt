@@ -71,7 +71,7 @@ fun LoginScreen(
         // 中间的登录卡片
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
+                .fillMaxWidth(0.5f)
                 .wrapContentHeight()
                 .align(Alignment.Center),
             shape = RoundedCornerShape(16.dp),
@@ -84,10 +84,10 @@ fun LoginScreen(
         ) {
             Column(
                 modifier = Modifier
-                    .padding(32.dp)
+                    .padding(24.dp)
                     .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Logo和标题
                 Text(
@@ -97,11 +97,11 @@ fun LoginScreen(
                     color = AppColors.primaryDefault
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = "特殊会议登录",
-                    fontSize = 16.sp,
+                    fontSize = 14.sp,
                     color = AppColors.textSecondary
                 )
 
@@ -215,7 +215,7 @@ fun LoginScreen(
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
+                        .height(44.dp)
                 ) {
                     if (state.isLoading) {
                         CircularProgressIndicator(
@@ -244,7 +244,7 @@ fun LoginScreen(
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
+                        .height(44.dp)
                 ) {
                     Text(
                         text = "快速会议",
