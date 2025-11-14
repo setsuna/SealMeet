@@ -251,13 +251,6 @@ fun LoginScreen(
                         fontSize = 16.sp
                     )
                 }
-
-                // 提示文本
-                Text(
-                    text = "测试账号: admin / 123456",
-                    fontSize = 12.sp,
-                    color = AppColors.textTertiary
-                )
             }
         }
 
