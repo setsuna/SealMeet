@@ -3,6 +3,7 @@ package com.xunyidi.sealmeet
 import android.app.Application
 import com.xunyidi.sealmeet.data.sync.DirectoryMonitorManager
 import com.xunyidi.sealmeet.domain.usecase.UnpackMeetingUseCase
+import com.xunyidi.sealmeet.util.NotificationHelper
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,9 @@ class SealMeetApp : Application() {
     
     @Inject
     lateinit var unpackMeetingUseCase: UnpackMeetingUseCase
+    
+    @Inject
+    lateinit var notificationHelper: NotificationHelper
     
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -70,9 +74,14 @@ class SealMeetApp : Application() {
             
             val results = unpackMeetingUseCase.unpackAllPendingPackages()
             
+            var successCount = 0
+            val successMeetings = mutableListOf<String>()
+            
             results.forEach { result ->
                 when (result) {
                     is com.xunyidi.sealmeet.data.sync.model.UnpackResult.Success -> {
+                        successCount++
+                        successMeetings.add(result.meetingId)
                         Timber.i("✅ 解包成功: ${result.meetingId}, 文件数: ${result.fileCount}")
                     }
                     is com.xunyidi.sealmeet.data.sync.model.UnpackResult.Failure -> {
@@ -83,6 +92,11 @@ class SealMeetApp : Application() {
             
             if (results.isNotEmpty()) {
                 Timber.i("========== 自动解包完成，共处理 ${results.size} 个会议包 ==========")
+                
+                // 发送解包成功通知
+                if (successCount > 0) {
+                    notificationHelper.showUnpackSuccessNotification(successCount, successMeetings)
+                }
             } else {
                 Timber.i("========== 无待解包文件 ==========")
             }

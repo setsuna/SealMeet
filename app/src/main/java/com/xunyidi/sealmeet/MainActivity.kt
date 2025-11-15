@@ -21,6 +21,7 @@ import com.xunyidi.sealmeet.presentation.screen.login.LoginScreen
 import com.xunyidi.sealmeet.presentation.screen.meetinglist.MeetingListScreen
 import com.xunyidi.sealmeet.presentation.screen.meetingdetail.MeetingDetailScreen
 import com.xunyidi.sealmeet.presentation.theme.SealMeetTheme
+import com.xunyidi.sealmeet.util.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -31,6 +32,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var unpackMeetingUseCase: UnpackMeetingUseCase
+    
+    @Inject
+    lateinit var notificationHelper: NotificationHelper
     
     private lateinit var permissionRequester: PermissionRequester
 
@@ -127,9 +131,14 @@ class MainActivity : ComponentActivity() {
                 Timber.i("开始检查待解包的会议文件...")
                 val results = unpackMeetingUseCase.unpackAllPendingPackages()
 
+                var successCount = 0
+                val successMeetings = mutableListOf<String>()
+                
                 results.forEach { result ->
                     when (result) {
                         is UnpackResult.Success -> {
+                            successCount++
+                            successMeetings.add(result.meetingId)
                             Timber.i("✅ 解包成功: ${result.meetingId}, 文件数: ${result.fileCount}")
                         }
                         is UnpackResult.Failure -> {
@@ -140,6 +149,11 @@ class MainActivity : ComponentActivity() {
 
                 if (results.isNotEmpty()) {
                     Timber.i("解包完成，共处理 ${results.size} 个会议包")
+                    
+                    // 发送解包成功通知
+                    if (successCount > 0) {
+                        notificationHelper.showUnpackSuccessNotification(successCount, successMeetings)
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "解包过程异常")

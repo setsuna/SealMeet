@@ -38,6 +38,10 @@ class DirectoryMonitorService : Service() {
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "sync_monitor_channel"
         private const val CHANNEL_NAME = "会议同步监控"
+        
+        private const val UNPACK_NOTIFICATION_ID = 1002
+        private const val UNPACK_CHANNEL_ID = "unpack_result_channel"
+        private const val UNPACK_CHANNEL_NAME = "解包结果通知"
 
         /**
          * 启动监控服务
@@ -66,6 +70,7 @@ class DirectoryMonitorService : Service() {
         
         // 创建通知渠道
         createNotificationChannel()
+        createUnpackNotificationChannel()
         
         // 启动前台服务
         val notification = createNotification()
@@ -131,11 +136,13 @@ class DirectoryMonitorService : Service() {
             
             var successCount = 0
             var failureCount = 0
+            val successMeetings = mutableListOf<String>()
             
             results.forEach { result ->
                 when (result) {
                     is com.xunyidi.sealmeet.data.sync.model.UnpackResult.Success -> {
                         successCount++
+                        successMeetings.add(result.meetingId)
                         Timber.i("✅ 解包成功: ${result.meetingId}, 文件数: ${result.fileCount}")
                     }
                     is com.xunyidi.sealmeet.data.sync.model.UnpackResult.Failure -> {
@@ -147,6 +154,12 @@ class DirectoryMonitorService : Service() {
             
             if (results.isNotEmpty()) {
                 Timber.i("========== 服务自动解包完成，成功: $successCount, 失败: $failureCount ==========")
+                
+                // 发送解包结果通知
+                if (successCount > 0) {
+                    showUnpackSuccessNotification(successCount, successMeetings)
+                }
+                
                 updateNotification(
                     "解包完成", 
                     "成功: $successCount, 失败: $failureCount"
@@ -189,6 +202,25 @@ class DirectoryMonitorService : Service() {
     }
 
     /**
+     * 创建解包结果通知渠道
+     */
+    private fun createUnpackNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                UNPACK_CHANNEL_ID,
+                UNPACK_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT // 默认重要性，会发出声音
+            ).apply {
+                description = "会议文件解包成功后的通知"
+                setShowBadge(true)
+            }
+            
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    /**
      * 创建通知
      */
     private fun createNotification(
@@ -198,7 +230,7 @@ class DirectoryMonitorService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(content)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // 确保有这个图标
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true) // 不可滑动删除
             .build()
@@ -211,5 +243,28 @@ class DirectoryMonitorService : Service() {
         val notification = createNotification(title, content)
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.notify(NOTIFICATION_ID, notification)
+    }
+
+    /**
+     * 显示解包成功通知
+     */
+    private fun showUnpackSuccessNotification(count: Int, meetingIds: List<String>) {
+        val title = "会议文件解包成功"
+        val content = if (count == 1) {
+            "会议 ${meetingIds.first()} 已解包完成"
+        } else {
+            "成功解包 $count 个会议文件"
+        }
+        
+        val notification = NotificationCompat.Builder(this, UNPACK_CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(content)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true) // 点击后自动消失
+            .build()
+        
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.notify(UNPACK_NOTIFICATION_ID, notification)
     }
 }
