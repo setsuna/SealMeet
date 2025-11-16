@@ -6,7 +6,6 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.xunyidi.sealmeet.R
@@ -46,18 +45,16 @@ class DirectoryMonitorService : Service() {
         /**
          * 启动监控服务
          */
+        @Suppress("unused")
         fun start(context: Context) {
             val intent = Intent(context, DirectoryMonitorService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
+            context.startForegroundService(intent)
         }
 
         /**
          * 停止监控服务
          */
+        @Suppress("unused")
         fun stop(context: Context) {
             val intent = Intent(context, DirectoryMonitorService::class.java)
             context.stopService(intent)
@@ -186,38 +183,34 @@ class DirectoryMonitorService : Service() {
      * 创建通知渠道（Android 8.0+）
      */
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW // 低重要性，不发出声音
-            ).apply {
-                description = "监控会议同步目录，自动解包会议文件"
-                setShowBadge(false)
-            }
-            
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_LOW // 低重要性，不发出声音
+        ).apply {
+            description = "监控会议同步目录，自动解包会议文件"
+            setShowBadge(false)
         }
+        
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.createNotificationChannel(channel)
     }
 
     /**
      * 创建解包结果通知渠道
      */
     private fun createUnpackNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                UNPACK_CHANNEL_ID,
-                UNPACK_CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT // 默认重要性，会发出声音
-            ).apply {
-                description = "会议文件解包成功后的通知"
-                setShowBadge(true)
-            }
-            
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            UNPACK_CHANNEL_ID,
+            UNPACK_CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_DEFAULT // 默认重要性，会发出声音
+        ).apply {
+            description = "会议文件解包成功后的通知"
+            setShowBadge(true)
         }
+        
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.createNotificationChannel(channel)
     }
 
     /**

@@ -10,6 +10,13 @@
     
     <!-- Android 11+ 完全存储访问权限 -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    
+    <!-- Android 13+ 通知权限 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    
+    <!-- 前台服务权限 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
         android:name=".SealMeetApp"
@@ -22,6 +29,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SealMeet"
         android:requestLegacyExternalStorage="true">
+        
+        <!-- 目录监控前台服务 -->
+        <service
+            android:name=".data.sync.service.DirectoryMonitorService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+        
         <activity
             android:name=".MainActivity"
             android:exported="true"

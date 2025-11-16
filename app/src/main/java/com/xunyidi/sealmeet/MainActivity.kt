@@ -1,5 +1,7 @@
 package com.xunyidi.sealmeet
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.View
@@ -9,6 +11,8 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -37,6 +41,16 @@ class MainActivity : ComponentActivity() {
     lateinit var notificationHelper: NotificationHelper
     
     private lateinit var permissionRequester: PermissionRequester
+    
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            Timber.i("通知权限已授予")
+        } else {
+            Timber.w("通知权限被拒绝")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,6 +63,7 @@ class MainActivity : ComponentActivity() {
             if (granted) {
                 Timber.i("存储权限已授予")
                 checkAndUnpackOnStart()
+                requestNotificationPermission()
             } else {
                 Timber.w("存储权限被拒绝")
                 Toast.makeText(this, "需要完整存储访问权限才能同步会议数据", Toast.LENGTH_LONG).show()
@@ -59,6 +74,7 @@ class MainActivity : ComponentActivity() {
         if (StoragePermissionHelper.hasStoragePermission(this)) {
             Timber.i("已有存储权限，开始解包")
             checkAndUnpackOnStart()
+            requestNotificationPermission()
         } else {
             Timber.w("无存储权限，请求授权")
             permissionRequester.requestPermissions()
@@ -107,21 +123,21 @@ class MainActivity : ComponentActivity() {
     private fun setupFullScreen() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.let { controller ->
-                controller.hide(WindowInsets.Type.systemBars())
-                controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        window.insetsController?.let { controller ->
+            controller.hide(WindowInsets.Type.systemBars())
+            controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+    }
+    
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
-        } else {
-            @Suppress("DEPRECATION")
-            window.decorView.systemUiVisibility = (
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                or View.SYSTEM_UI_FLAG_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-            )
         }
     }
     
