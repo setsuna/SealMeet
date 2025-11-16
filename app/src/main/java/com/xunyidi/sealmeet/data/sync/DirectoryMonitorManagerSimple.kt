@@ -26,6 +26,7 @@ class DirectoryMonitorManagerSimple @Inject constructor(
     
     // 监控状态
     private val _isMonitoring = MutableStateFlow(false)
+    @Suppress("unused")
     val isMonitoring: StateFlow<Boolean> = _isMonitoring
     
     // 解包回调
@@ -39,6 +40,7 @@ class DirectoryMonitorManagerSimple @Inject constructor(
     /**
      * 启动目录监控
      */
+    @Suppress("unused")
     fun startMonitoring(onUnpackTriggered: suspend () -> Unit) {
         if (_isMonitoring.value) {
             Timber.w("目录监控已在运行中")
@@ -94,6 +96,7 @@ class DirectoryMonitorManagerSimple @Inject constructor(
     /**
      * 检查监控状态
      */
+    @Suppress("unused")
     fun isRunning(): Boolean = _isMonitoring.value
 
     /**
@@ -145,6 +148,7 @@ class DirectoryMonitorManagerSimple @Inject constructor(
     /**
      * 清理资源
      */
+    @Suppress("unused")
     fun cleanup() {
         stopMonitoring()
         scope.cancel()

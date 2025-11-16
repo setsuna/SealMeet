@@ -26,6 +26,7 @@ class DirectoryMonitorManager @Inject constructor(
     
     // 监控状态
     private val _isMonitoring = MutableStateFlow(false)
+    @Suppress("unused")
     val isMonitoring: StateFlow<Boolean> = _isMonitoring
     
     // 解包回调
@@ -101,6 +102,7 @@ class DirectoryMonitorManager @Inject constructor(
     /**
      * 检查监控状态
      */
+    @Suppress("unused")
     fun isRunning(): Boolean = _isMonitoring.value
 
     /**
