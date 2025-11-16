@@ -76,7 +76,7 @@ class DirectoryMonitorManagerSimple @Inject constructor(
     /**
      * 停止目录监控
      */
-    fun stopMonitoring() {
+    private fun stopMonitoring() {
         if (!_isMonitoring.value) {
             Timber.w("目录监控未运行")
             return
