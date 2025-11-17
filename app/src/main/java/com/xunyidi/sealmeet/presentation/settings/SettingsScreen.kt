@@ -50,7 +50,7 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("开发设置", style = MaterialTheme.typography.titleLarge)
+                Text("设置页面", style = MaterialTheme.typography.titleLarge)
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, contentDescription = "关闭")
                 }
