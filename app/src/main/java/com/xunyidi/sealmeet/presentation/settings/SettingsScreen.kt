@@ -1,7 +1,6 @@
 package com.xunyidi.sealmeet.presentation.settings
 
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -13,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.xunyidi.sealmeet.presentation.theme.AppColors
 
 /**
  * 设置页面
@@ -78,26 +76,8 @@ fun SettingsScreen(
                         )
                     }
                 )
-                
-                Divider()
-                
-                // 保留临时文件开关
-                SettingItem(
-                    title = "保留临时文件",
-                    description = if (state.keepTempFilesEnabled) {
-                        "已启用，可查看 /cache/unpack_* 目录"
-                    } else {
-                        "解包后自动删除临时文件"
-                    },
-                    checked = state.keepTempFilesEnabled,
-                    onCheckedChange = { enabled ->
-                        viewModel.handleIntent(
-                            SettingsContract.Intent.ToggleKeepTempFiles(enabled)
-                        )
-                    }
-                )
-                
-                Divider()
+
+                HorizontalDivider()
                 
                 // 允许服务器配置覆盖开关
                 SettingItem(
@@ -114,16 +94,16 @@ fun SettingsScreen(
                         )
                     }
                 )
+
+                HorizontalDivider()
                 
-                Divider()
-                
-                // 开发者模式开关 /Download /data/userdata/meetings
+                // 开发者模式开关
                 SettingItem(
                     title = "开发者模式",
                     description = if (state.developerModeEnabled) {
-                        "已启用"
+                        "已启用：使用 Download 目录，保留临时文件"
                     } else {
-                        "已关闭"
+                        "已关闭：使用 /data/userdata/meetings，自动清理临时文件"
                     },
                     checked = state.developerModeEnabled,
                     onCheckedChange = { enabled ->
@@ -132,8 +112,8 @@ fun SettingsScreen(
                         )
                     }
                 )
-                
-                Divider()
+
+                HorizontalDivider()
                 
                 // 清空数据按钮
                 Button(

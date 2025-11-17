@@ -5,7 +5,9 @@ import com.xunyidi.sealmeet.core.mvi.BaseViewModel
 import com.xunyidi.sealmeet.data.local.database.AppDatabase
 import com.xunyidi.sealmeet.data.preferences.AppPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
 import javax.inject.Inject
@@ -32,9 +34,6 @@ class SettingsViewModel @Inject constructor(
             is SettingsContract.Intent.ToggleIncrementalUpdate -> {
                 toggleIncrementalUpdate(intent.enabled)
             }
-            is SettingsContract.Intent.ToggleKeepTempFiles -> {
-                toggleKeepTempFiles(intent.enabled)
-            }
             is SettingsContract.Intent.ToggleServerConfigOverride -> {
                 toggleServerConfigOverride(intent.enabled)
             }
@@ -56,13 +55,6 @@ class SettingsViewModel @Inject constructor(
             launch {
                 appPreferences.incrementalUpdateEnabled.collect { enabled ->
                     updateState { copy(incrementalUpdateEnabled = enabled) }
-                }
-            }
-            
-            // 监听保留临时文件配置
-            launch {
-                appPreferences.keepTempFilesEnabled.collect { enabled ->
-                    updateState { copy(keepTempFilesEnabled = enabled) }
                 }
             }
             
@@ -104,27 +96,6 @@ class SettingsViewModel @Inject constructor(
     }
     
     /**
-     * 切换保留临时文件开关
-     */
-    private fun toggleKeepTempFiles(enabled: Boolean) {
-        viewModelScope.launch {
-            try {
-                appPreferences.setKeepTempFilesEnabled(enabled)
-                val message = if (enabled) {
-                    "已启用保留临时文件（用于调试）"
-                } else {
-                    "已关闭保留临时文件"
-                }
-                sendEffect(SettingsContract.Effect.ShowToast(message))
-                Timber.i("保留临时文件开关: $enabled")
-            } catch (e: Exception) {
-                Timber.e(e, "切换保留临时文件开关失败")
-                sendEffect(SettingsContract.Effect.ShowToast("设置失败"))
-            }
-        }
-    }
-    
-    /**
      * 切换允许服务器配置覆盖开关
      */
     private fun toggleServerConfigOverride(enabled: Boolean) {
@@ -147,18 +118,21 @@ class SettingsViewModel @Inject constructor(
     
     /**
      * 切换开发者模式开关
+     * 开发者模式会同时启用保留临时文件功能
      */
     private fun toggleDeveloperMode(enabled: Boolean) {
         viewModelScope.launch {
             try {
                 appPreferences.setDeveloperModeEnabled(enabled)
+                // 开发者模式同时控制保留临时文件
+                appPreferences.setKeepTempFilesEnabled(enabled)
                 val message = if (enabled) {
-                    "已启用开发者模式，使用 Download 目录"
+                    "已启用开发者模式：使用 Download 目录，保留临时文件"
                 } else {
-                    "已关闭开发者模式，使用 /data/userdata/meetings"
+                    "已关闭开发者模式：使用 /data/userdata/meetings，自动清理临时文件"
                 }
                 sendEffect(SettingsContract.Effect.ShowToast(message))
-                Timber.i("开发者模式开关: $enabled")
+                Timber.i("开发者模式开关: $enabled, 保留临时文件: $enabled")
             } catch (e: Exception) {
                 Timber.e(e, "切换开发者模式开关失败")
                 sendEffect(SettingsContract.Effect.ShowToast("设置失败"))
@@ -176,27 +150,30 @@ class SettingsViewModel @Inject constructor(
             try {
                 Timber.i("开始清空所有数据...")
                 
-                // 1. 清空数据库
-                database.clearAllTables()
-                Timber.i("✅ 数据库已清空")
-                
-                // 2. 删除所有会议文件
-                val meetingsDir = File(context.filesDir, "meetings")
-                if (meetingsDir.exists()) {
-                    val deleted = meetingsDir.deleteRecursively()
-                    if (deleted) {
-                        Timber.i("✅ 会议文件已删除")
-                    } else {
-                        Timber.w("⚠️ 会议文件删除失败")
+                // 使用 IO 线程执行数据库和文件操作
+                withContext(Dispatchers.IO) {
+                    // 1. 清空数据库
+                    database.clearAllTables()
+                    Timber.i("✅ 数据库已清空")
+                    
+                    // 2. 删除所有会议文件
+                    val meetingsDir = File(context.filesDir, "meetings")
+                    if (meetingsDir.exists()) {
+                        val deleted = meetingsDir.deleteRecursively()
+                        if (deleted) {
+                            Timber.i("✅ 会议文件已删除")
+                        } else {
+                            Timber.w("⚠️ 会议文件删除失败")
+                        }
                     }
+                    
+                    // 3. 删除临时文件
+                    val cacheFiles = context.cacheDir.listFiles()
+                    cacheFiles?.filter { it.name.startsWith("unpack_") }?.forEach { file ->
+                        file.deleteRecursively()
+                    }
+                    Timber.i("✅ 临时文件已清理")
                 }
-                
-                // 3. 删除临时文件
-                val cacheFiles = context.cacheDir.listFiles()
-                cacheFiles?.filter { it.name.startsWith("unpack_") }?.forEach { file ->
-                    file.deleteRecursively()
-                }
-                Timber.i("✅ 临时文件已清理")
                 
                 sendEffect(SettingsContract.Effect.ShowToast("所有数据已清空"))
                 sendEffect(SettingsContract.Effect.DataCleared)
