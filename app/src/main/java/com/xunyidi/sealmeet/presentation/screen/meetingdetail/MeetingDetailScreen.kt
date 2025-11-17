@@ -279,15 +279,48 @@ private fun MeetingHeader(
                     )
                 }
 
-                // 会议分类
-                meeting.category?.let { category ->
-                    if (category.isNotBlank()) {
-                        Text(
-                            text = "分类：$category",
-                            fontSize = 14.sp,
-                            color = TextInverse.copy(alpha = 0.95f),
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
+                // 会议分类和参会人员按钮（同一行，方案B）
+                val hasCategory = !meeting.category.isNullOrBlank()
+                val showParticipantsButton = meeting.type == "tablet"
+                
+                if (hasCategory || showParticipantsButton) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 左侧：会议分类
+                        if (hasCategory) {
+                            Text(
+                                text = "分类：${meeting.category}",
+                                fontSize = 14.sp,
+                                color = TextInverse.copy(alpha = 0.95f),
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                        
+                        // 右侧：参会人员按钮
+                        if (showParticipantsButton) {
+                            Button(
+                                onClick = onShowParticipants,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.White.copy(alpha = 0.2f)
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.width(140.dp)
+                            ) {
+                                Text(
+                                    text = "参会人员名单",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = TextInverse
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -299,31 +332,6 @@ private fun MeetingHeader(
                     contentDescription = "选择会议",
                     tint = TextInverse
                 )
-            }
-        }
-
-        // 快捷按钮（只有快速会议才显示参会人员按钮）
-        if (meeting.type == "tablet") {
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Button(
-                    onClick = onShowParticipants,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White.copy(alpha = 0.2f)
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.width(140.dp)
-                ) {
-                    Text(
-                        text = "参会人员名单",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TextInverse
-                    )
-                }
             }
         }
     }
