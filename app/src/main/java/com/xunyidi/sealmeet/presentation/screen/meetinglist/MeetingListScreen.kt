@@ -277,11 +277,11 @@ private fun MeetingTimelineItem(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // 会议标题
+                // 会议标题（加粗强调）
                 Text(
                     text = meeting.name,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
                     color = AppColors.textPrimary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -304,7 +304,7 @@ private fun MeetingTimelineItem(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = meeting.location?.takeIf { it.isNotBlank() } ?: "",
+                            text = meeting.location?.takeIf { it.isNotBlank() } ?: "--",
                             fontSize = 14.sp,
                             color = AppColors.textSecondary,
                             maxLines = 1,
@@ -324,7 +324,7 @@ private fun MeetingTimelineItem(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = meeting.hostName?.takeIf { it.isNotBlank() } ?: "",
+                            text = meeting.hostName?.takeIf { it.isNotBlank() } ?: "--",
                             fontSize = 14.sp,
                             color = AppColors.textSecondary,
                             maxLines = 1,
@@ -341,7 +341,7 @@ private fun MeetingTimelineItem(
 }
 
 /**
- * 时间显示：9:00 上午（横向排列）
+ * 时间显示：9:00 上午（横向排列，12小时制）
  */
 @Composable
 private fun TimeDisplay(timestamp: Long) {
@@ -349,10 +349,11 @@ private fun TimeDisplay(timestamp: Long) {
         timeInMillis = timestamp
     }
     
-    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+    val hour12 = calendar.get(Calendar.HOUR)
+    val displayHour = if (hour12 == 0) 12 else hour12
     val minute = calendar.get(Calendar.MINUTE)
-    val timeText = String.format("%d:%02d", hour, minute)
-    val periodText = if (hour < 12) "上午" else "下午"
+    val timeText = String.format("%d:%02d", displayHour, minute)
+    val periodText = if (calendar.get(Calendar.HOUR_OF_DAY) < 12) "上午" else "下午"
     
     Row(
         verticalAlignment = Alignment.CenterVertically,
