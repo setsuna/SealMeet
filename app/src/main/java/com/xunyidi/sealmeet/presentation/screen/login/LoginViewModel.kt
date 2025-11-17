@@ -2,9 +2,12 @@ package com.xunyidi.sealmeet.presentation.screen.login
 
 import androidx.lifecycle.viewModelScope
 import com.xunyidi.sealmeet.core.mvi.BaseViewModel
+import com.xunyidi.sealmeet.data.preferences.AppPreferences
+import com.xunyidi.sealmeet.data.repository.AuthRepository
+import com.xunyidi.sealmeet.data.repository.AuthResult
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -12,7 +15,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    // TODO: 注入 AuthRepository
+    private val authRepository: AuthRepository,
+    private val appPreferences: AppPreferences
 ) : BaseViewModel<LoginContract.State, LoginContract.Intent, LoginContract.Effect>(
     initialState = LoginContract.State()
 ) {
@@ -59,18 +63,39 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             updateState { copy(isLoading = true) }
 
-            // 模拟登录请求（TODO: 调用真实的登录接口）
-            delay(1500)
+            try {
+                // 调用认证仓库进行登录验证
+                val result = authRepository.authenticateParticipant(
+                    userName = currentState.username,
+                    password = currentState.password
+                )
 
-            // 模拟登录逻辑
-            val success = currentState.username == "admin" && currentState.password == "123456"
+                updateState { copy(isLoading = false) }
 
-            updateState { copy(isLoading = false) }
-
-            if (success) {
-                sendEffect(LoginContract.Effect.NavigateToHome)
-            } else {
-                sendEffect(LoginContract.Effect.ShowError("用户名或密码错误"))
+                when (result) {
+                    is AuthResult.Success -> {
+                        val participant = result.participant
+                        Timber.i("登录成功，用户: ${participant.userName}, 会议ID: ${result.meetingId}")
+                        
+                        // 保存当前登录用户信息
+                        appPreferences.setCurrentUser(
+                            userId = participant.userId,
+                            userName = participant.userName,
+                            meetingId = result.meetingId,
+                            role = participant.role
+                        )
+                        
+                        sendEffect(LoginContract.Effect.NavigateToHome)
+                    }
+                    is AuthResult.Error -> {
+                        Timber.w("登录失败: ${result.message}")
+                        sendEffect(LoginContract.Effect.ShowError(result.message))
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "登录异常")
+                updateState { copy(isLoading = false) }
+                sendEffect(LoginContract.Effect.ShowError("登录失败: ${e.message}"))
             }
         }
     }

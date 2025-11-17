@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +30,12 @@ class AppPreferences @Inject constructor(
         private val KEY_KEEP_TEMP_FILES = booleanPreferencesKey("keep_temp_files_enabled")
         private val KEY_ALLOW_SERVER_OVERRIDE = booleanPreferencesKey("allow_server_config_override")
         private val KEY_DEVELOPER_MODE = booleanPreferencesKey("developer_mode_enabled")
+        
+        // 登录用户信息键
+        private val KEY_CURRENT_USER_ID = stringPreferencesKey("current_user_id")
+        private val KEY_CURRENT_USER_NAME = stringPreferencesKey("current_user_name")
+        private val KEY_CURRENT_MEETING_ID = stringPreferencesKey("current_meeting_id")
+        private val KEY_CURRENT_USER_ROLE = stringPreferencesKey("current_user_role")
     }
     
     /**
@@ -72,6 +79,38 @@ class AppPreferences @Inject constructor(
         }
     
     /**
+     * 当前登录用户ID
+     */
+    val currentUserId: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[KEY_CURRENT_USER_ID]
+        }
+    
+    /**
+     * 当前登录用户名
+     */
+    val currentUserName: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[KEY_CURRENT_USER_NAME]
+        }
+    
+    /**
+     * 当前会议ID
+     */
+    val currentMeetingId: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[KEY_CURRENT_MEETING_ID]
+        }
+    
+    /**
+     * 当前用户角色
+     */
+    val currentUserRole: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[KEY_CURRENT_USER_ROLE]
+        }
+    
+    /**
      * 设置增量更新开关
      */
     suspend fun setIncrementalUpdateEnabled(enabled: Boolean) {
@@ -104,6 +143,35 @@ class AppPreferences @Inject constructor(
     suspend fun setDeveloperModeEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[KEY_DEVELOPER_MODE] = enabled
+        }
+    }
+    
+    /**
+     * 保存当前登录用户信息
+     */
+    suspend fun setCurrentUser(
+        userId: String,
+        userName: String,
+        meetingId: String,
+        role: String
+    ) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_CURRENT_USER_ID] = userId
+            preferences[KEY_CURRENT_USER_NAME] = userName
+            preferences[KEY_CURRENT_MEETING_ID] = meetingId
+            preferences[KEY_CURRENT_USER_ROLE] = role
+        }
+    }
+    
+    /**
+     * 清除当前登录用户信息（退出登录）
+     */
+    suspend fun clearCurrentUser() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(KEY_CURRENT_USER_ID)
+            preferences.remove(KEY_CURRENT_USER_NAME)
+            preferences.remove(KEY_CURRENT_MEETING_ID)
+            preferences.remove(KEY_CURRENT_USER_ROLE)
         }
     }
 }

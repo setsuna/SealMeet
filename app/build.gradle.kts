@@ -82,7 +82,9 @@ dependencies {
     
     // Okio
     implementation(libs.okio)
-    
+
+    // mindrot
+    implementation("org.mindrot:jbcrypt:0.4")
     // Timber
     implementation(libs.timber)
     //icon

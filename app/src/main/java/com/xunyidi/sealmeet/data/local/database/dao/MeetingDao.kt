@@ -59,7 +59,13 @@ interface MeetingDao {
     fun getByIdFlow(meetingId: String): Flow<MeetingEntity?>
     
     /**
-     * 查询所有会议
+     * 查询所有会议（非Flow）
+     */
+    @Query("SELECT * FROM meetings ORDER BY start_time DESC")
+    suspend fun getAll(): List<MeetingEntity>
+    
+    /**
+     * 查询所有会议（Flow）
      */
     @Query("SELECT * FROM meetings ORDER BY start_time DESC")
     fun getAllFlow(): Flow<List<MeetingEntity>>
