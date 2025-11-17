@@ -51,6 +51,7 @@ import com.xunyidi.sealmeet.presentation.theme.AppColors
 import com.xunyidi.sealmeet.presentation.theme.TextInverse
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.core.net.toUri
 
 /**
  * 会议详情页面
@@ -877,7 +878,7 @@ private fun createFileViewerIntent(filePath: String, fileName: String): Intent {
             // 其他文件类型，使用系统默认方式打开
             Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(
-                    android.net.Uri.parse(filePath),
+                    filePath.toUri(),
                     getMimeType(extension)
                 )
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
