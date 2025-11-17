@@ -43,7 +43,7 @@ object MeetingDetailContract {
     
     sealed interface Effect : UiEffect {
         data class ShowError(val message: String) : Effect
-        data class OpenFileViewer(val fileId: String, val filePath: String) : Effect
+        data class OpenFileViewer(val fileId: String, val filePath: String, val fileName: String) : Effect
         data object NavigateBack : Effect
     }
 }

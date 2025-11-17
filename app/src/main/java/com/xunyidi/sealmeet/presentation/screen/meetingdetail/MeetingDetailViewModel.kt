@@ -149,7 +149,8 @@ class MeetingDetailViewModel @Inject constructor(
                     sendEffect(
                         MeetingDetailContract.Effect.OpenFileViewer(
                             fileId = file.id,
-                            filePath = file.localPath
+                            filePath = file.localPath,
+                            fileName = file.originalName
                         )
                     )
                 } else {

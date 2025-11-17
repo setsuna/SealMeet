@@ -1,5 +1,7 @@
 package com.xunyidi.sealmeet.presentation.screen.meetingdetail
 
+import android.content.ComponentName
+import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -76,8 +78,12 @@ fun MeetingDetailScreen(
                     Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
                 }
                 is MeetingDetailContract.Effect.OpenFileViewer -> {
-                    // TODO: 实现文件预览
-                    Toast.makeText(context, "打开文件: ${effect.filePath}", Toast.LENGTH_SHORT).show()
+                    try {
+                        val intent = createFileViewerIntent(effect.filePath, effect.fileName)
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "打开文件失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
                 }
                 is MeetingDetailContract.Effect.NavigateBack -> {
                     onNavigateBack()
@@ -833,5 +839,59 @@ private fun formatFileSize(bytes: Long): String {
         bytes < 1024 -> "$bytes B"
         bytes < 1024 * 1024 -> "${bytes / 1024} KB"
         else -> String.format("%.1f MB", bytes / (1024.0 * 1024.0))
+    }
+}
+
+/**
+ * 创建文件查看器Intent
+ */
+private fun createFileViewerIntent(filePath: String, fileName: String): Intent {
+    val extension = fileName.substringAfterLast('.', "").lowercase()
+    
+    return when (extension) {
+        "ofd" -> {
+            // 打开OFD文件
+            Intent(Intent.ACTION_VIEW).apply {
+                component = ComponentName(
+                    "com.westone.ofdreader",
+                    "com.westone.ofdreader.MainActivity"
+                )
+                putExtra("ofdFilePath", filePath)
+            }
+        }
+        "doc", "docx", "xls", "xlsx", "ppt", "pptx" -> {
+            // 打开Office文件
+            Intent("Start_YOZO_Office").apply {
+                putExtra("File_Name", filePath)
+                putExtra("File_Path", filePath)
+            }
+        }
+        else -> {
+            // 其他文件类型，使用系统默认方式打开
+            Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(
+                    android.net.Uri.parse(filePath),
+                    getMimeType(extension)
+                )
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        }
+    }
+}
+
+/**
+ * 根据文件扩展名获取MIME类型
+ */
+private fun getMimeType(extension: String): String {
+    return when (extension) {
+        "pdf" -> "application/pdf"
+        "doc" -> "application/msword"
+        "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "xls" -> "application/vnd.ms-excel"
+        "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "ppt" -> "application/vnd.ms-powerpoint"
+        "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        "txt" -> "text/plain"
+        else -> "*/*"
     }
 }
