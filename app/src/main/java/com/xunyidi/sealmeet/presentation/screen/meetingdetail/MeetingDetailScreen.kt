@@ -187,9 +187,9 @@ private fun MeetingDetailContent(
         }
 
         // 底部操作按钮
-        item {
-            BottomActionButton()
-        }
+//        item {
+//            BottomActionButton()
+//        }
     }
 }
 
@@ -220,8 +220,8 @@ private fun MeetingHeader(
                 // 会议标题
                 Text(
                     text = meeting.name,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
                     color = TextInverse,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
@@ -304,7 +304,7 @@ private fun MeetingHeader(
 
         // 快捷按钮（只有快速会议才显示参会人员按钮）
         if (meeting.type == "tablet") {
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
