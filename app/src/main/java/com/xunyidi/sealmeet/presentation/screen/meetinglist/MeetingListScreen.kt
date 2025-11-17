@@ -5,12 +5,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,13 +22,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.xunyidi.sealmeet.R
 import com.xunyidi.sealmeet.data.local.database.entity.MeetingEntity
 import com.xunyidi.sealmeet.presentation.theme.AppColors
 import com.xunyidi.sealmeet.presentation.theme.TextInverse
@@ -46,7 +46,6 @@ fun MeetingListScreen(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // 监听副作用
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
             when (effect) {
@@ -92,36 +91,25 @@ fun MeetingListScreen(
         ) {
             when {
                 state.isLoading -> {
-                    // 加载中
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center),
                         color = AppColors.primaryDefault
                     )
                 }
                 state.meetings.isEmpty() -> {
-                    // 空状态
                     EmptyState(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
                 else -> {
-                    // 会议列表
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(state.meetings) { meeting ->
-                            MeetingCard(
-                                meeting = meeting,
-                                onClick = {
-                                    viewModel.handleIntent(
-                                        MeetingListContract.Intent.SelectMeeting(meeting.id)
-                                    )
-                                }
+                    MeetingTimelineList(
+                        meetings = state.meetings,
+                        onMeetingClick = { meetingId ->
+                            viewModel.handleIntent(
+                                MeetingListContract.Intent.SelectMeeting(meetingId)
                             )
                         }
-                    }
+                    )
                 }
             }
         }
@@ -129,163 +117,270 @@ fun MeetingListScreen(
 }
 
 /**
- * 会议卡片 - 水平布局：书签 | 标题 | 地点 | 密级
+ * 会议时间线列表 - 按日期分组
  */
 @Composable
-private fun MeetingCard(
+private fun MeetingTimelineList(
+    meetings: List<MeetingEntity>,
+    onMeetingClick: (String) -> Unit
+) {
+    // 按日期分组
+    val groupedMeetings = meetings.groupBy { meeting ->
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = meeting.startTime
+        }
+        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(calendar.time)
+    }.toSortedMap()
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        groupedMeetings.forEach { (dateKey, meetingsInDay) ->
+            // 日期标题
+            item(key = "header_$dateKey") {
+                DateHeader(timestamp = meetingsInDay.first().startTime)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+            
+            // 该日期下的会议列表
+            itemsIndexed(
+                items = meetingsInDay,
+                key = { _, meeting -> meeting.id }
+            ) { index, meeting ->
+                MeetingTimelineItem(
+                    meeting = meeting,
+                    isAlternate = index % 2 == 1,
+                    onClick = { onMeetingClick(meeting.id) }
+                )
+                
+                if (index < meetingsInDay.size - 1) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+            
+            // 日期组之间的间距
+            item(key = "spacer_$dateKey") {
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
+}
+
+/**
+ * 日期标题
+ */
+@Composable
+private fun DateHeader(timestamp: Long) {
+    val calendar = Calendar.getInstance().apply {
+        timeInMillis = timestamp
+    }
+    
+    val weekFormat = SimpleDateFormat("EEEE", Locale.CHINESE)
+    val dateFormat = SimpleDateFormat("M月d日 yyyy", Locale.CHINESE)
+    
+    val weekText = weekFormat.format(calendar.time)
+    val dateText = dateFormat.format(calendar.time)
+    
+    Row(
+        modifier = Modifier.padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = weekText,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = AppColors.textPrimary
+        )
+        Text(
+            text = ",",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Normal,
+            color = AppColors.textPrimary
+        )
+        Text(
+            text = dateText,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Normal,
+            color = AppColors.textPrimary
+        )
+    }
+}
+
+/**
+ * 会议时间线项
+ */
+@Composable
+private fun MeetingTimelineItem(
     meeting: MeetingEntity,
+    isAlternate: Boolean,
     onClick: () -> Unit
 ) {
+    val backgroundColor = if (isAlternate) {
+        AppColors.bgContainer
+    } else {
+        AppColors.bgCard
+    }
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = AppColors.bgCard
+            containerColor = backgroundColor
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
+            defaultElevation = 0.dp
         )
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 左侧：书签（无padding，贴边显示）
-            BookmarkTag(timestamp = meeting.startTime)
-            
-            // 中间：会议标题
-            Text(
-                text = meeting.name,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = AppColors.textPrimary,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+            // 左侧：圆点 + 时间（横向排列，居中）
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(vertical = 12.dp)
+                    .width(100.dp)
+                    .align(Alignment.CenterVertically)
+            ) {
+                // 圆点
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .background(
+                            color = getSecurityLevelColor(meeting.securityLevel),
+                            shape = CircleShape
+                        )
+                )
+                
+                // 时间
+                TimeDisplay(timestamp = meeting.startTime)
+            }
+            
+            // 分隔线
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(50.dp)
+                    .background(AppColors.divider)
+                    .align(Alignment.CenterVertically)
             )
             
-            // 右侧：地点
-            meeting.location?.let { location ->
-                if (location.isNotBlank()) {
+            // 中间：会议内容
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // 会议标题
+                Text(
+                    text = meeting.name,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = AppColors.textPrimary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                // 地点和主持人
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 地点（图标始终显示）
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(vertical = 12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.LocationOn,
                             contentDescription = null,
                             tint = AppColors.textSecondary,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = location,
-                            fontSize = 13.sp,
+                            text = meeting.location?.takeIf { it.isNotBlank() } ?: "",
+                            fontSize = 14.sp,
                             color = AppColors.textSecondary,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.widthIn(max = 100.dp)
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    
+                    // 主持人（图标始终显示）
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = AppColors.textSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = meeting.hostName?.takeIf { it.isNotBlank() } ?: "",
+                            fontSize = 14.sp,
+                            color = AppColors.textSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
             }
             
-            // 最右侧：密级标签（上下贴边）
-            Box(modifier = Modifier.padding(top = 0.dp)) {
-                SecurityLevelTag(securityLevel = meeting.securityLevel)
-            }
+            // 右侧：密级标签
+            SecurityLevelTag(securityLevel = meeting.securityLevel)
         }
     }
 }
 
 /**
- * 书签标签 - 使用SVG图标
+ * 时间显示：9:00 上午（横向排列）
  */
 @Composable
-private fun BookmarkTag(timestamp: Long) {
+private fun TimeDisplay(timestamp: Long) {
     val calendar = Calendar.getInstance().apply {
         timeInMillis = timestamp
     }
-    val today = Calendar.getInstance()
     
-    // 判断是否是今天
-    val isToday = calendar.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
-                  calendar.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)
+    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+    val minute = calendar.get(Calendar.MINUTE)
+    val timeText = String.format("%d:%02d", hour, minute)
+    val periodText = if (hour < 12) "上午" else "下午"
     
-    val dateText = if (isToday) {
-        "今天"
-    } else {
-        SimpleDateFormat("MM-dd", Locale.getDefault()).format(Date(timestamp))
-    }
-    val timeText = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
-    val weekText = when (calendar.get(Calendar.DAY_OF_WEEK)) {
-        Calendar.SUNDAY -> "星\n期\n日"
-        Calendar.MONDAY -> "星\n期\n一"
-        Calendar.TUESDAY -> "星\n期\n二"
-        Calendar.WEDNESDAY -> "星\n期\n三"
-        Calendar.THURSDAY -> "星\n期\n四"
-        Calendar.FRIDAY -> "星\n期\n五"
-        Calendar.SATURDAY -> "星\n期\n六"
-        else -> ""
-    }
-    
-    val textColor = TextInverse
-    
-    Box(
-        modifier = Modifier
-            .width(80.dp)
-            .height(70.dp)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // 书签背景图标（保持原始颜色）
-        Icon(
-            painter = painterResource(id = R.drawable.ic_bookmark),
-            contentDescription = null,
-            tint = Color.Unspecified,
-            modifier = Modifier.fillMaxSize()
+        Text(
+            text = timeText,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = AppColors.textPrimary
         )
-        
-        // 文字内容（左右两列布局）
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 15.dp, top = 8.dp, end = 10.dp, bottom = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            // 左侧：日期和时间
-            Column(
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Text(
-                    text = dateText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor
-                )
-                Text(
-                    text = timeText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor
-                )
-            }
-            
-            // 右侧：星期（竖排）
-            Text(
-                text = weekText,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = textColor,
-                lineHeight = 16.sp,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
+        Text(
+            text = periodText,
+            fontSize = 12.sp,
+            color = AppColors.textSecondary
+        )
+    }
+}
+
+/**
+ * 根据密级获取圆点颜色
+ */
+private fun getSecurityLevelColor(securityLevel: String): Color {
+    return when (securityLevel.lowercase()) {
+        "internal" -> Color(0xFF4CAF50)      // 绿色
+        "confidential" -> Color(0xFFFFC107)  // 黄色
+        "secret" -> Color(0xFFF44336)        // 红色
+        else -> Color(0xFF9E9E9E)            // 灰色
     }
 }
 
@@ -311,7 +406,7 @@ private fun SecurityLevelTag(securityLevel: String) {
             fontWeight = FontWeight.Bold,
             color = textColor,
             lineHeight = 14.sp,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp)
         )
     }
 }
