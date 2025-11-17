@@ -117,13 +117,13 @@ fun SettingsScreen(
                 
                 Divider()
                 
-                // 开发者模式开关
+                // 开发者模式开关 /Download /data/userdata/meetings
                 SettingItem(
                     title = "开发者模式",
                     description = if (state.developerModeEnabled) {
-                        "已启用，使用 Download 目录"
+                        "已启用"
                     } else {
-                        "已关闭，使用 /data/userdata/meetings"
+                        "已关闭"
                     },
                     checked = state.developerModeEnabled,
                     onCheckedChange = { enabled ->
