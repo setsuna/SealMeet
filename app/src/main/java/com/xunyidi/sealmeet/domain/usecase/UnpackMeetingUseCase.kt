@@ -26,6 +26,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatterBuilder
+import java.time.temporal.ChronoField
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -56,6 +59,15 @@ class UnpackMeetingUseCase @Inject constructor(
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
         .build()
+    
+    // 自定义时间格式解析器，支持可变长度的小数秒（0-9位）
+    private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatterBuilder()
+        .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
+        .optionalStart()
+        .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
+        .optionalEnd()
+        .appendPattern("XXX")
+        .toFormatter()
     
     /**
      * 解包单个会议包
@@ -486,10 +498,12 @@ class UnpackMeetingUseCase @Inject constructor(
     
     /**
      * 解析 ISO8601 时间戳为毫秒
+     * 支持带时区偏移和可变长度小数秒（0-9位）的格式
+     * 例如：2025-11-17T16:08:53.612449+08:00
      */
     private fun parseIsoTimestamp(isoString: String): Long {
         return try {
-            java.time.Instant.parse(isoString).toEpochMilli()
+            java.time.OffsetDateTime.parse(isoString, dateTimeFormatter).toInstant().toEpochMilli()
         } catch (e: Exception) {
             Timber.w(e, "时间戳解析失败: $isoString")
             System.currentTimeMillis()
@@ -502,7 +516,7 @@ class UnpackMeetingUseCase @Inject constructor(
     private fun parseIsoTimestampOrNull(isoString: String?): Long? {
         return if (isoString != null) {
             try {
-                java.time.Instant.parse(isoString).toEpochMilli()
+                java.time.OffsetDateTime.parse(isoString, dateTimeFormatter).toInstant().toEpochMilli()
             } catch (e: Exception) {
                 Timber.w(e, "时间戳解析失败: $isoString")
                 null
