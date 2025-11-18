@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
                     is Screen.Login -> {
                         LoginScreen(
                             onNavigateToHome = {
-                                Toast.makeText(this, "登录成功！", Toast.LENGTH_SHORT).show()
+                                currentScreen = Screen.MeetingList
                             },
                             onNavigateToQuickMeeting = {
                                 currentScreen = Screen.MeetingList
