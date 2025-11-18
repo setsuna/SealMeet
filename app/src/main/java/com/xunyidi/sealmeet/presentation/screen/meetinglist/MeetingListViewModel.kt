@@ -19,10 +19,7 @@ class MeetingListViewModel @Inject constructor(
     initialState = MeetingListContract.State()
 ) {
 
-    init {
-        // 初始化时启动持续监听会议列表
-        observeMeetings()
-    }
+    private var currentMeetingType: String = "tablet"
 
     override fun handleIntent(intent: MeetingListContract.Intent) {
         when (intent) {
@@ -30,20 +27,51 @@ class MeetingListViewModel @Inject constructor(
                 // 由于已经在 observeMeetings() 中持续监听，这里只需重置状态
                 updateState { copy(isLoading = true, errorMessage = null) }
             }
+            is MeetingListContract.Intent.SetMeetingType -> {
+                setMeetingType(intent.meetingType)
+            }
             is MeetingListContract.Intent.Refresh -> refresh()
             is MeetingListContract.Intent.SelectMeeting -> selectMeeting(intent.meetingId)
         }
     }
 
     /**
-     * 持续监听平板会议列表（type = tablet）
-     * 使用 Flow 自动响应数据库变化
+     * 设置会议类型并开始监听
+     */
+    private fun setMeetingType(meetingType: String) {
+        if (currentMeetingType != meetingType) {
+            currentMeetingType = meetingType
+            updateState { copy(meetingType = meetingType) }
+            observeMeetings()
+        }
+    }
+
+    /**
+     * 持续监听会议列表
+     * 根据会议类型查询：
+     * - standard: 标准会议（账号密码登录）
+     * - tablet: 平板会议（快速会议）
      */
     private fun observeMeetings() {
         viewModelScope.launch {
             updateState { copy(isLoading = true, errorMessage = null) }
             
-            meetingDao.getTabletMeetingsFlow()
+            val meetingsFlow = when (currentMeetingType) {
+                "standard" -> {
+                    Timber.d("监听标准会议列表")
+                    meetingDao.getStandardMeetingsFlow()
+                }
+                "tablet" -> {
+                    Timber.d("监听平板会议列表")
+                    meetingDao.getTabletMeetingsFlow()
+                }
+                else -> {
+                    Timber.w("未知会议类型: $currentMeetingType，使用平板会议")
+                    meetingDao.getTabletMeetingsFlow()
+                }
+            }
+            
+            meetingsFlow
                 .catch { e ->
                     Timber.e(e, "监听会议列表失败")
                     updateState { 
@@ -55,7 +83,7 @@ class MeetingListViewModel @Inject constructor(
                     sendEffect(MeetingListContract.Effect.ShowError("加载会议失败"))
                 }
                 .collect { meetings ->
-                    Timber.d("会议列表更新: ${meetings.size}个")
+                    Timber.d("会议列表更新: ${meetings.size}个 (类型: $currentMeetingType)")
                     updateState { 
                         copy(
                             isLoading = false,

@@ -34,17 +34,23 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * 会议列表页面 - 显示type=tablet的快速会议
+ * 会议列表页面
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MeetingListScreen(
+    meetingType: String,
     viewModel: MeetingListViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    // 设置会议类型
+    LaunchedEffect(meetingType) {
+        viewModel.handleIntent(MeetingListContract.Intent.SetMeetingType(meetingType))
+    }
 
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
@@ -59,12 +65,18 @@ fun MeetingListScreen(
         }
     }
 
+    val titleText = when (state.meetingType) {
+        "standard" -> "标准会议"
+        "tablet" -> "快速会议"
+        else -> "会议列表"
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { 
                     Text(
-                        text = "快速会议",
+                        text = titleText,
                         color = TextInverse
                     )
                 },
@@ -98,6 +110,7 @@ fun MeetingListScreen(
                 }
                 state.meetings.isEmpty() -> {
                     EmptyState(
+                        meetingType = state.meetingType,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -417,8 +430,15 @@ private fun SecurityLevelTag(securityLevel: String) {
  */
 @Composable
 private fun EmptyState(
+    meetingType: String,
     modifier: Modifier = Modifier
 ) {
+    val (title, subtitle) = when (meetingType) {
+        "standard" -> Pair("暂无标准会议", "请等待会议数据同步")
+        "tablet" -> Pair("暂无快速会议", "请等待会议数据同步")
+        else -> Pair("暂无会议", "请等待会议数据同步")
+    }
+    
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -431,12 +451,12 @@ private fun EmptyState(
             modifier = Modifier.size(64.dp)
         )
         Text(
-            text = "暂无快速会议",
+            text = title,
             fontSize = 16.sp,
             color = AppColors.textSecondary
         )
         Text(
-            text = "请等待会议数据同步",
+            text = subtitle,
             fontSize = 14.sp,
             color = AppColors.textTertiary
         )

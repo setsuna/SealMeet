@@ -11,18 +11,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-import androidx.core.view.WindowCompat
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.xunyidi.sealmeet.core.permission.PermissionRequester
 import com.xunyidi.sealmeet.core.permission.StoragePermissionHelper
 import com.xunyidi.sealmeet.data.sync.model.UnpackResult
 import com.xunyidi.sealmeet.domain.usecase.UnpackMeetingUseCase
 import com.xunyidi.sealmeet.presentation.screen.login.LoginScreen
-import com.xunyidi.sealmeet.presentation.screen.meetinglist.MeetingListScreen
 import com.xunyidi.sealmeet.presentation.screen.meetingdetail.MeetingDetailScreen
+import com.xunyidi.sealmeet.presentation.screen.meetinglist.MeetingListScreen
 import com.xunyidi.sealmeet.presentation.theme.SealMeetTheme
 import com.xunyidi.sealmeet.util.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
@@ -89,28 +89,34 @@ class MainActivity : ComponentActivity() {
                     is Screen.Login -> {
                         LoginScreen(
                             onNavigateToHome = {
-                                currentScreen = Screen.MeetingList
+                                // 账号密码登录 -> 标准会议列表
+                                currentScreen = Screen.MeetingList(meetingType = "standard")
                             },
                             onNavigateToQuickMeeting = {
-                                currentScreen = Screen.MeetingList
+                                // 快速会议 -> 平板会议列表
+                                currentScreen = Screen.MeetingList(meetingType = "tablet")
                             }
                         )
                     }
                     is Screen.MeetingList -> {
-                        MeetingListScreen(
-                            onNavigateBack = {
-                                currentScreen = Screen.Login
-                            },
-                            onNavigateToDetail = { meetingId ->
-                                currentScreen = Screen.MeetingDetail(meetingId)
-                            }
-                        )
+                        key(screen.meetingType) {
+                            MeetingListScreen(
+                                meetingType = screen.meetingType,
+                                onNavigateBack = {
+                                    currentScreen = Screen.Login
+                                },
+                                onNavigateToDetail = { meetingId ->
+                                    currentScreen = Screen.MeetingDetail(meetingId, screen.meetingType)
+                                }
+                            )
+                        }
                     }
                     is Screen.MeetingDetail -> {
                         MeetingDetailScreen(
                             meetingId = screen.meetingId,
                             onNavigateBack = {
-                                currentScreen = Screen.MeetingList
+                                // 返回到之前的会议列表类型
+                                currentScreen = Screen.MeetingList(meetingType = screen.meetingType)
                             }
                         )
                     }
@@ -179,8 +185,8 @@ class MainActivity : ComponentActivity() {
 
 sealed class Screen {
     data object Login : Screen()
-    data object MeetingList : Screen()
-    data class MeetingDetail(val meetingId: String) : Screen()
+    data class MeetingList(val meetingType: String) : Screen()
+    data class MeetingDetail(val meetingId: String, val meetingType: String = "tablet") : Screen()
 }
 
 /**
@@ -190,17 +196,22 @@ val ScreenSaver = androidx.compose.runtime.saveable.Saver<Screen, String>(
     save = { screen ->
         when (screen) {
             is Screen.Login -> "login"
-            is Screen.MeetingList -> "meeting_list"
-            is Screen.MeetingDetail -> "meeting_detail:${screen.meetingId}"
+            is Screen.MeetingList -> "meeting_list:${screen.meetingType}"
+            is Screen.MeetingDetail -> "meeting_detail:${screen.meetingId}:${screen.meetingType}"
         }
     },
     restore = { savedValue ->
         when {
             savedValue == "login" -> Screen.Login
-            savedValue == "meeting_list" -> Screen.MeetingList
+            savedValue.startsWith("meeting_list:") -> {
+                val meetingType = savedValue.substringAfter("meeting_list:")
+                Screen.MeetingList(meetingType)
+            }
             savedValue.startsWith("meeting_detail:") -> {
-                val meetingId = savedValue.substringAfter("meeting_detail:")
-                Screen.MeetingDetail(meetingId)
+                val parts = savedValue.substringAfter("meeting_detail:").split(":")
+                val meetingId = parts[0]
+                val meetingType = parts.getOrNull(1) ?: "tablet"
+                Screen.MeetingDetail(meetingId, meetingType)
             }
             else -> Screen.Login
         }

@@ -16,7 +16,8 @@ object MeetingListContract {
     data class State(
         val isLoading: Boolean = false,
         val meetings: List<MeetingEntity> = emptyList(),
-        val errorMessage: String? = null
+        val errorMessage: String? = null,
+        val meetingType: String = "tablet" // standard 或 tablet
     ) : UiState
 
     /**
@@ -24,6 +25,7 @@ object MeetingListContract {
      */
     sealed interface Intent : UiIntent {
         data object LoadMeetings : Intent
+        data class SetMeetingType(val meetingType: String) : Intent
         data object Refresh : Intent
         data class SelectMeeting(val meetingId: String) : Intent
     }
