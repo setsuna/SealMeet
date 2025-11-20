@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.xunyidi.sealmeet.core.mvi.BaseViewModel
 import com.xunyidi.sealmeet.data.local.database.dao.MeetingDao
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -20,6 +21,12 @@ class MeetingListViewModel @Inject constructor(
 ) {
 
     private var currentMeetingType: String = "tablet"
+    private var observeJob: Job? = null
+
+    init {
+        // 初始化时立即开始监听
+        observeMeetings()
+    }
 
     override fun handleIntent(intent: MeetingListContract.Intent) {
         when (intent) {
@@ -40,8 +47,14 @@ class MeetingListViewModel @Inject constructor(
      */
     private fun setMeetingType(meetingType: String) {
         if (currentMeetingType != meetingType) {
+            Timber.d("切换会议类型: $currentMeetingType -> $meetingType")
             currentMeetingType = meetingType
             updateState { copy(meetingType = meetingType) }
+            
+            // 取消之前的监听
+            observeJob?.cancel()
+            
+            // 重新开始监听
             observeMeetings()
         }
     }
@@ -53,7 +66,7 @@ class MeetingListViewModel @Inject constructor(
      * - tablet: 平板会议（快速会议）
      */
     private fun observeMeetings() {
-        viewModelScope.launch {
+        observeJob = viewModelScope.launch {
             updateState { copy(isLoading = true, errorMessage = null) }
             
             val meetingsFlow = when (currentMeetingType) {
