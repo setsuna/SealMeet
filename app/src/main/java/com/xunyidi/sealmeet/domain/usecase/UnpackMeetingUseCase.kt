@@ -25,6 +25,7 @@ import com.xunyidi.sealmeet.util.StoragePathManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -75,15 +76,29 @@ class UnpackMeetingUseCase @Inject constructor(
      * 解包单个会议包
      */
     suspend fun unpackMeeting(packageFile: PackageFile): UnpackResult = withContext(Dispatchers.IO) {
-        Timber.i("开始解包会议: ${packageFile.meetingId}")
+        // 获取文件锁
+        val fileLock = syncFileManager.getFileLock(packageFile.fileName)
         
-        // 读取配置
-        val incrementalUpdateEnabled = appPreferences.incrementalUpdateEnabled.first()
-        val keepTempFilesEnabled = appPreferences.keepTempFilesEnabled.first()
+        // 尝试获取锁，如果已被锁定则跳过
+        if (fileLock.isLocked) {
+            Timber.w("文件正在被其他任务处理，跳过: ${packageFile.fileName}")
+            return@withContext UnpackResult.Failure(
+                packageFile.meetingId,
+                UnpackError.Unknown("文件正在被其他任务处理")
+            )
+        }
         
-        Timber.i("配置: 增量更新=$incrementalUpdateEnabled, 保留临时文件=$keepTempFilesEnabled")
+        // 锁定文件
+        fileLock.lock()
         
         try {
+            Timber.i("开始解包会议: ${packageFile.meetingId}")
+            
+            // 读取配置
+            val incrementalUpdateEnabled = appPreferences.incrementalUpdateEnabled.first()
+            val keepTempFilesEnabled = appPreferences.keepTempFilesEnabled.first()
+            
+            Timber.i("配置: 增量更新=$incrementalUpdateEnabled, 保留临时文件=$keepTempFilesEnabled")
             // 1. 读取加密文件
             val encryptedData = packageFile.file.readBytes()
             Timber.d("读取加密文件完成，大小: ${encryptedData.size} bytes")
@@ -349,6 +364,10 @@ class UnpackMeetingUseCase @Inject constructor(
                 packageFile.meetingId,
                 UnpackError.Unknown(e.message ?: "Unknown")
             )
+        } finally {
+            // 释放文件锁
+            fileLock.unlock()
+            Timber.d("释放文件锁: ${packageFile.fileName}")
         }
     }
     

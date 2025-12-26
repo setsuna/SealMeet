@@ -24,6 +24,9 @@ class DirectoryMonitorManager @Inject constructor(
     // 防抖处理：记录待处理的文件
     private val pendingFiles = mutableMapOf<String, Job>()
     
+    // 全局解包任务：防止重复调度
+    private var unpackJob: Job? = null
+    
     // 监控状态
     private val _isMonitoring = MutableStateFlow(false)
     @Suppress("unused")
@@ -94,6 +97,10 @@ class DirectoryMonitorManager @Inject constructor(
         pendingFiles.values.forEach { it.cancel() }
         pendingFiles.clear()
         
+        // 取消全局解包任务
+        unpackJob?.cancel()
+        unpackJob = null
+        
         _isMonitoring.value = false
         
         Timber.i("🛑 目录监控已停止")
@@ -136,8 +143,8 @@ class DirectoryMonitorManager @Inject constructor(
 
                 Timber.i("✅ 文件稳定，触发解包: $fileName")
                 
-                // 触发解包
-                onUnpackTriggered?.invoke()
+                // 触发解包（防止重复调度）
+                triggerUnpack()
                 
             } catch (e: CancellationException) {
                 Timber.d("⏹️  解包任务被取消: $fileName")
@@ -149,6 +156,27 @@ class DirectoryMonitorManager @Inject constructor(
         }
 
         pendingFiles[fileName] = job
+    }
+    
+    /**
+     * 触发解包（防止重复调度）
+     */
+    private fun triggerUnpack() {
+        // 如果全局解包任务正在运行，跳过
+        if (unpackJob?.isActive == true) {
+            Timber.i("⏳ 解包任务正在运行中，跳过新调度")
+            return
+        }
+        
+        unpackJob = scope.launch {
+            try {
+                Timber.i("🚀 启动全局解包任务")
+                onUnpackTriggered?.invoke()
+                Timber.i("✅ 全局解包任务完成")
+            } catch (e: Exception) {
+                Timber.e(e, "❌ 全局解包任务异常")
+            }
+        }
     }
 
     /**

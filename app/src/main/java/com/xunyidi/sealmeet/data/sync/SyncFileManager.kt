@@ -4,8 +4,10 @@ import com.xunyidi.sealmeet.data.preferences.AppPreferences
 import com.xunyidi.sealmeet.util.StoragePathManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
 import timber.log.Timber
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +26,9 @@ class SyncFileManager @Inject constructor(
         private const val PACKAGE_FILE_EXTENSION = ".zip.enc"
         private const val MANIFEST_FILE_NAME = "manifest.json"
     }
+    
+    // 文件级别锁：防止同一个文件被并发处理
+    private val fileLocks = ConcurrentHashMap<String, Mutex>()
     
     /**
      * 获取同步目录
@@ -157,10 +162,19 @@ class SyncFileManager @Inject constructor(
     }
     
     fun deletePackageFile(packageFile: PackageFile): Boolean {
+        // 检查文件锁
+        val mutex = fileLocks[packageFile.fileName]
+        if (mutex != null && mutex.isLocked) {
+            Timber.w("文件被锁定，跳过删除: ${packageFile.file.name}")
+            return false
+        }
+        
         return try {
             val deleted = packageFile.file.delete()
             if (deleted) {
                 Timber.i("删除包文件成功: ${packageFile.file.name}")
+                // 清理锁
+                fileLocks.remove(packageFile.fileName)
             } else {
                 Timber.w("删除包文件失败: ${packageFile.file.name}")
             }
@@ -174,6 +188,27 @@ class SyncFileManager @Inject constructor(
     fun cleanupCorruptedPackage(packageFile: PackageFile, reason: String) {
         Timber.w("清理损坏的包文件: ${packageFile.file.name}, 原因: $reason")
         deletePackageFile(packageFile)
+    }
+    
+    /**
+     * 获取文件锁
+     * 
+     * @param fileName 文件名
+     * @return 文件锁
+     */
+    fun getFileLock(fileName: String): Mutex {
+        return fileLocks.getOrPut(fileName) { Mutex() }
+    }
+    
+    /**
+     * 检查文件是否被锁定
+     * 
+     * @param fileName 文件名
+     * @return true 如果文件被锁定
+     */
+    fun isFileLocked(fileName: String): Boolean {
+        val mutex = fileLocks[fileName]
+        return mutex != null && mutex.isLocked
     }
 }
 
