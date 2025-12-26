@@ -91,7 +91,7 @@ fun LoginScreen(
             ) {
                 // Logo和标题
                 Text(
-                    text = "讯意迪涉密会议文档综合管控系统",
+                    text = "讯意迪安全会议",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
                     color = AppColors.primaryDefault
