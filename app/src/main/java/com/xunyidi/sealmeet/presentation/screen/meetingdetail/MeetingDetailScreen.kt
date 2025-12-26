@@ -868,8 +868,8 @@ private fun createFileViewerIntent(filePath: String, fileName: String): Intent {
                 putExtra("ofdFilePath", filePath)
             }
         }
-        "doc", "docx", "xls", "xlsx", "ppt", "pptx" -> {
-            // 打开Office文件
+        "doc", "docx", "xls", "xlsx", "ppt", "pptx", "pdf" -> {
+            // 打开Office文件和PDF
             Intent("Start_YOZO_Office").apply {
                 putExtra("File_Name", filePath)
                 putExtra("File_Path", filePath)
