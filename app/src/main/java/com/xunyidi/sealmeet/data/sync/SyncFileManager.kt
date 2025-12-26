@@ -162,13 +162,6 @@ class SyncFileManager @Inject constructor(
     }
     
     fun deletePackageFile(packageFile: PackageFile): Boolean {
-        // 检查文件锁
-        val mutex = fileLocks[packageFile.fileName]
-        if (mutex != null && mutex.isLocked) {
-            Timber.w("文件被锁定，跳过删除: ${packageFile.file.name}")
-            return false
-        }
-        
         return try {
             val deleted = packageFile.file.delete()
             if (deleted) {
