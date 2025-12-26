@@ -21,8 +21,10 @@ import com.xunyidi.sealmeet.data.sync.model.PackageChecksum
 import com.xunyidi.sealmeet.data.sync.model.PackageManifest
 import com.xunyidi.sealmeet.data.sync.model.UnpackError
 import com.xunyidi.sealmeet.data.sync.model.UnpackResult
+import com.xunyidi.sealmeet.util.StoragePathManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -149,7 +151,12 @@ class UnpackMeetingUseCase @Inject constructor(
                     )
                 }
                 
-                Timber.d("manifest.json 解析成功: ${manifest.meetingName}")
+                Timber.d("manifest.json 解析成功: ${manifest.meetingName}, 文件数: ${manifest.files.size}")
+                
+                // 打印 manifest.files 信息
+                manifest.files.forEachIndexed { index, fileInfo ->
+                    Timber.d("文件[$index]: id=${fileInfo.id}, name=${fileInfo.originalName}, agendaId=${fileInfo.agendaId}")
+                }
                 
                 // 6. 读取checksum.json（可选）
                 val checksumData = unzipper.readFileFromZip(zipData, "checksum.json")
@@ -172,9 +179,12 @@ class UnpackMeetingUseCase @Inject constructor(
                 
                 // 8. 保存文件到永久存储
                 val meetingDir = getMeetingDirectory(packageFile.meetingId)
-                meetingDir.mkdirs()
+                val dirCreated = meetingDir.mkdirs()
+                Timber.i("会议目录: ${meetingDir.absolutePath}, 创建结果: $dirCreated, 存在: ${meetingDir.exists()}")
                 
                 val fileEntityList = mutableListOf<MeetingFileEntity>()
+                
+                Timber.i("开始复制文件: manifest.files.size=${manifest.files.size}")
                 
                 manifest.files.forEach { fileInfo ->
                     // 查找对应的文件
@@ -206,6 +216,8 @@ class UnpackMeetingUseCase @Inject constructor(
                         Timber.w("文件未找到: ${fileInfo.originalName}")
                     }
                 }
+                
+                Timber.i("文件复制完成: fileEntityList.size=${fileEntityList.size}")
                 
                 // 9. 存入数据库（事务）
                 database.withTransaction {
@@ -288,7 +300,9 @@ class UnpackMeetingUseCase @Inject constructor(
                     database.meetingDao().insert(meetingEntity)
                     
                     // 插入文件信息
+                    Timber.i("准备插入文件记录: ${fileEntityList.size} 个")
                     database.fileDao().insertAll(fileEntityList)
+                    Timber.i("文件记录插入完成")
                     
                     // 插入参会人员信息（如果有）
                     if (participants.isNotEmpty()) {
@@ -530,7 +544,11 @@ class UnpackMeetingUseCase @Inject constructor(
      * 获取会议的本地存储目录
      */
     private fun getMeetingDirectory(meetingId: String): File {
-        return File(context.filesDir, "meetings/$meetingId")
+        val isDeveloperMode = runBlocking {
+            appPreferences.developerModeEnabled.first()
+        }
+        
+        return StoragePathManager.getMeetingDirectory(context, meetingId, isDeveloperMode)
     }
     
     /**

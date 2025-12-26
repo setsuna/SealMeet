@@ -2,7 +2,9 @@ package com.xunyidi.sealmeet.presentation.screen.meetingdetail
 
 import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
+import java.io.File
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -877,7 +879,7 @@ private fun createFileViewerIntent(filePath: String, fileName: String): Intent {
             // 其他文件类型，使用系统默认方式打开
             Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(
-                    filePath.toUri(),
+                    Uri.fromFile(File(filePath)),
                     getMimeType(extension)
                 )
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

@@ -1,7 +1,7 @@
 package com.xunyidi.sealmeet.data.sync
 
-import android.os.Environment
 import com.xunyidi.sealmeet.data.preferences.AppPreferences
+import com.xunyidi.sealmeet.util.StoragePathManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import timber.log.Timber
@@ -28,21 +28,14 @@ class SyncFileManager @Inject constructor(
     /**
      * 获取同步目录
      * 开发者模式： Download 目录
-     * 生产者模式： /data/userdata/meetings
+     * 生产者模式： /data/userdata/com.xunyidi.sealmeet/sync
      */
     fun getSyncDirectory(): File {
-        // 读取开发者模式配置
         val isDeveloperMode = runBlocking {
             appPreferences.developerModeEnabled.first()
         }
         
-        return if (isDeveloperMode) {
-            // 开发者模式：使用 Download 目录
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        } else {
-            // 生产者模式：使用 /data/userdata/meetings
-            File("/data/userdata/meetings")
-        }
+        return StoragePathManager.getSyncDirectory(isDeveloperMode)
     }
     
     /**

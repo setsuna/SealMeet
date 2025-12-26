@@ -1,14 +1,18 @@
 package com.xunyidi.sealmeet
 
 import android.app.Application
+import com.xunyidi.sealmeet.data.preferences.AppPreferences
 import com.xunyidi.sealmeet.data.sync.DirectoryMonitorManager
 import com.xunyidi.sealmeet.domain.usecase.UnpackMeetingUseCase
 import com.xunyidi.sealmeet.util.NotificationHelper
+import com.xunyidi.sealmeet.util.StoragePathManager
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -27,6 +31,9 @@ class SealMeetApp : Application() {
     @Inject
     lateinit var notificationHelper: NotificationHelper
     
+    @Inject
+    lateinit var appPreferences: AppPreferences
+    
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {
@@ -39,8 +46,30 @@ class SealMeetApp : Application() {
         
         Timber.d("SealMeet Application started")
         
+        // 初始化存储目录
+        initializeStorageDirectories()
+        
         // 启动目录监控
         startDirectoryMonitoring()
+    }
+    
+    /**
+     * 初始化存储目录
+     * 
+     * 在应用启动时创建所有必要的目录
+     */
+    private fun initializeStorageDirectories() {
+        try {
+            val isDeveloperMode = runBlocking {
+                appPreferences.developerModeEnabled.first()
+            }
+            
+            Timber.i("当前模式: ${if (isDeveloperMode) "开发者模式" else "生产模式"}")
+            
+            StoragePathManager.initializeDirectories(this, isDeveloperMode)
+        } catch (e: Exception) {
+            Timber.e(e, "初始化存储目录失败")
+        }
     }
     
     /**
