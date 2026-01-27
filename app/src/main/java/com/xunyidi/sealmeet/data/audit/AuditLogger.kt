@@ -196,6 +196,39 @@ class AuditLogger @Inject constructor(
         )
     }
     
+    /**
+     * 记录用户签到
+     * 
+     * @param meetingId 会议ID
+     * @param userId 用户ID
+     * @param userName 用户名
+     * @param signInType 签到类型: "password" 或 "manual"
+     * @param signatureFile 签名文件名（仅手写签到时）
+     */
+    fun logSignIn(
+        meetingId: String,
+        userId: String,
+        userName: String,
+        signInType: String,
+        signatureFile: String? = null
+    ) {
+        val extra = mutableMapOf("type" to signInType)
+        if (signatureFile != null) {
+            extra["file"] = signatureFile
+        }
+        
+        writeEvent(
+            AuditEvent(
+                timestamp = now(),
+                action = AuditAction.SIGN_IN,
+                meetingId = meetingId,
+                userId = userId,
+                userName = userName,
+                extra = extra
+            )
+        )
+    }
+    
     // ========== 通用方法（用于扩展）==========
     
     /**

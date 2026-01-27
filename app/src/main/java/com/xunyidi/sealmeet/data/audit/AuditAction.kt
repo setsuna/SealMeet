@@ -32,6 +32,8 @@ object AuditAction {
     const val USER_LOGIN = "user_login"
     /** 用户登出 */
     const val USER_LOGOUT = "user_logout"
+    /** 用户签到 */
+    const val SIGN_IN = "sign_in"
     
     // ===== 应用相关 =====
     /** 应用启动 */

@@ -81,6 +81,18 @@ object StoragePathManager {
     }
     
     /**
+     * 获取签名文件存储目录
+     * 
+     * 存储手写签到的签名图片
+     * 
+     * @param isDeveloperMode 是否为开发者模式
+     * @return 签名文件目录
+     */
+    fun getSignaturesDirectory(isDeveloperMode: Boolean): File {
+        return File(getUploadDirectory(isDeveloperMode), "signatures")
+    }
+    
+    /**
      * 获取日志目录（未来可能需要）
      * 
      * @param isDeveloperMode 是否为开发者模式

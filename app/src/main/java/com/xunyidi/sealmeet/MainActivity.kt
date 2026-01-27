@@ -117,6 +117,14 @@ class MainActivity : ComponentActivity() {
                             onNavigateBack = {
                                 // 返回到之前的会议列表类型
                                 currentScreen = Screen.MeetingList(meetingType = screen.meetingType)
+                            },
+                            onNavigateToAgendas = { meetingId ->
+                                // TODO: 跳转到议程页面
+                                // currentScreen = Screen.MeetingAgendas(meetingId)
+                            },
+                            onNavigateToLogin = {
+                                // 退出会议，返回登录页
+                                currentScreen = Screen.Login
                             }
                         )
                     }
