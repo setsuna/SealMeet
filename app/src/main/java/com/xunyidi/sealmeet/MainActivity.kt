@@ -21,6 +21,7 @@ import com.xunyidi.sealmeet.core.permission.StoragePermissionHelper
 import com.xunyidi.sealmeet.data.sync.model.UnpackResult
 import com.xunyidi.sealmeet.domain.usecase.UnpackMeetingUseCase
 import com.xunyidi.sealmeet.presentation.screen.login.LoginScreen
+import com.xunyidi.sealmeet.presentation.screen.meetingagendas.MeetingAgendasScreen
 import com.xunyidi.sealmeet.presentation.screen.meetingdetail.MeetingDetailScreen
 import com.xunyidi.sealmeet.presentation.screen.meetinglist.MeetingListScreen
 import com.xunyidi.sealmeet.presentation.theme.SealMeetTheme
@@ -89,11 +90,9 @@ class MainActivity : ComponentActivity() {
                     is Screen.Login -> {
                         LoginScreen(
                             onNavigateToHome = {
-                                // 账号密码登录 -> 显示所有会议（standard + tablet）
                                 currentScreen = Screen.MeetingList(meetingType = "all")
                             },
                             onNavigateToQuickMeeting = {
-                                // 快速会议 -> 只显示平板会议
                                 currentScreen = Screen.MeetingList(meetingType = "tablet")
                             }
                         )
@@ -115,16 +114,21 @@ class MainActivity : ComponentActivity() {
                         MeetingDetailScreen(
                             meetingId = screen.meetingId,
                             onNavigateBack = {
-                                // 返回到之前的会议列表类型
                                 currentScreen = Screen.MeetingList(meetingType = screen.meetingType)
                             },
                             onNavigateToAgendas = { meetingId ->
-                                // TODO: 跳转到议程页面
-                                // currentScreen = Screen.MeetingAgendas(meetingId)
+                                currentScreen = Screen.MeetingAgendas(meetingId, screen.meetingType)
                             },
                             onNavigateToLogin = {
-                                // 退出会议，返回登录页
                                 currentScreen = Screen.Login
+                            }
+                        )
+                    }
+                    is Screen.MeetingAgendas -> {
+                        MeetingAgendasScreen(
+                            meetingId = screen.meetingId,
+                            onNavigateBack = {
+                                currentScreen = Screen.MeetingDetail(screen.meetingId, screen.meetingType)
                             }
                         )
                     }
@@ -179,7 +183,6 @@ class MainActivity : ComponentActivity() {
                 if (results.isNotEmpty()) {
                     Timber.i("解包完成，共处理 ${results.size} 个会议包")
                     
-                    // 发送解包成功通知
                     if (successCount > 0) {
                         notificationHelper.showUnpackSuccessNotification(successCount, successMeetings)
                     }
@@ -195,10 +198,11 @@ sealed class Screen {
     data object Login : Screen()
     data class MeetingList(val meetingType: String) : Screen()
     data class MeetingDetail(val meetingId: String, val meetingType: String = "tablet") : Screen()
+    data class MeetingAgendas(val meetingId: String, val meetingType: String = "tablet") : Screen()
 }
 
 /**
- * Screen状态保存器，用于在Activity重建时保持状态
+ * Screen状态保存器
  */
 val ScreenSaver = androidx.compose.runtime.saveable.Saver<Screen, String>(
     save = { screen ->
@@ -206,6 +210,7 @@ val ScreenSaver = androidx.compose.runtime.saveable.Saver<Screen, String>(
             is Screen.Login -> "login"
             is Screen.MeetingList -> "meeting_list:${screen.meetingType}"
             is Screen.MeetingDetail -> "meeting_detail:${screen.meetingId}:${screen.meetingType}"
+            is Screen.MeetingAgendas -> "meeting_agendas:${screen.meetingId}:${screen.meetingType}"
         }
     },
     restore = { savedValue ->
@@ -220,6 +225,12 @@ val ScreenSaver = androidx.compose.runtime.saveable.Saver<Screen, String>(
                 val meetingId = parts[0]
                 val meetingType = parts.getOrNull(1) ?: "tablet"
                 Screen.MeetingDetail(meetingId, meetingType)
+            }
+            savedValue.startsWith("meeting_agendas:") -> {
+                val parts = savedValue.substringAfter("meeting_agendas:").split(":")
+                val meetingId = parts[0]
+                val meetingType = parts.getOrNull(1) ?: "tablet"
+                Screen.MeetingAgendas(meetingId, meetingType)
             }
             else -> Screen.Login
         }

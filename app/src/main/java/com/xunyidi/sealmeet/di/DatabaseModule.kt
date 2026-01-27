@@ -21,6 +21,13 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
     
+    // v3 -> v4: 文件表新增 security_level 字段
+    private val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
+        override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE meeting_files ADD COLUMN security_level TEXT NOT NULL DEFAULT 'internal'")
+        }
+    }
+    
     @Provides
     @Singleton
     fun provideAppDatabase(
@@ -31,7 +38,8 @@ object DatabaseModule {
             AppDatabase::class.java,
             AppDatabase.DATABASE_NAME
         )
-            .fallbackToDestructiveMigration() // 开发阶段使用，生产环境需要正确的迁移策略
+            .addMigrations(MIGRATION_3_4)
+            .fallbackToDestructiveMigration() // 迁移失败时才清空
             .build()
     }
     

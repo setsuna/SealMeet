@@ -19,7 +19,6 @@ import androidx.room.PrimaryKey
             childColumns = ["meeting_id"],
             onDelete = ForeignKey.CASCADE
         )
-        // 移除议程外键约束，因为议程可能不存在
     ],
     indices = [
         Index(value = ["meeting_id"]),
@@ -51,6 +50,9 @@ data class MeetingFileEntity(
     
     @ColumnInfo(name = "checksum")
     val checksum: String, // SHA256校验和
+    
+    @ColumnInfo(name = "security_level")
+    val securityLevel: String = "internal", // 密级: internal(内部), confidential(秘密), secret(机密)
     
     @ColumnInfo(name = "created_at")
     val createdAt: Long,
