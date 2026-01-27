@@ -1,8 +1,10 @@
 package com.xunyidi.sealmeet
 
 import android.app.Application
+import com.xunyidi.sealmeet.data.audit.AuditLogger
 import com.xunyidi.sealmeet.data.preferences.AppPreferences
 import com.xunyidi.sealmeet.data.sync.DirectoryMonitorManager
+import com.xunyidi.sealmeet.domain.usecase.ClearDataUseCase
 import com.xunyidi.sealmeet.domain.usecase.UnpackMeetingUseCase
 import com.xunyidi.sealmeet.util.NotificationHelper
 import com.xunyidi.sealmeet.util.StoragePathManager
@@ -29,6 +31,12 @@ class SealMeetApp : Application() {
     lateinit var unpackMeetingUseCase: UnpackMeetingUseCase
     
     @Inject
+    lateinit var clearDataUseCase: ClearDataUseCase
+    
+    @Inject
+    lateinit var auditLogger: AuditLogger
+    
+    @Inject
     lateinit var notificationHelper: NotificationHelper
     
     @Inject
@@ -48,6 +56,12 @@ class SealMeetApp : Application() {
         
         // 初始化存储目录
         initializeStorageDirectories()
+        
+        // 记录应用启动日志（用于验证审计功能）
+        auditLogger.log(
+            action = "app_start",
+            extra = mapOf("version" to BuildConfig.VERSION_NAME)
+        )
         
         // 启动目录监控
         startDirectoryMonitoring()
@@ -101,6 +115,14 @@ class SealMeetApp : Application() {
         try {
             Timber.i("========== 触发自动解包 ==========")
             
+            // 1. 先检查是否有 .clear_all 标记
+            if (clearDataUseCase.handleClearAllFlag()) {
+                Timber.i("🔴 已处理 .clear_all 标记，数据已清空")
+                notificationHelper.showClearDataNotification()
+                // 清空后仍然继续解包流程（可能有新的会议包）
+            }
+            
+            // 2. 执行解包
             val results = unpackMeetingUseCase.unpackAllPendingPackages()
             
             var successCount = 0

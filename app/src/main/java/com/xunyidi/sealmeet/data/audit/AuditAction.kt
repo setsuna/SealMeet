@@ -33,6 +33,12 @@ object AuditAction {
     /** 用户登出 */
     const val USER_LOGOUT = "user_logout"
     
+    // ===== 应用相关 =====
+    /** 应用启动 */
+    const val APP_START = "app_start"
+    /** 应用退出 */
+    const val APP_EXIT = "app_exit"
+    
     // ===== 预留扩展 =====
     /** 提交投票 */
     const val VOTE_SUBMIT = "vote_submit"

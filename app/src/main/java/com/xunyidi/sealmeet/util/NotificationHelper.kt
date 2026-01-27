@@ -17,7 +17,8 @@ class NotificationHelper @Inject constructor(
     companion object {
         private const val CHANNEL_ID = "unpack_result_channel"
         private const val CHANNEL_NAME = "解包结果通知"
-        private const val NOTIFICATION_ID = 2001
+        private const val NOTIFICATION_ID_UNPACK = 2001
+        private const val NOTIFICATION_ID_CLEAR = 2002
     }
     
     init {
@@ -55,6 +56,22 @@ class NotificationHelper @Inject constructor(
             .build()
         
         val notificationManager = context.getSystemService(NotificationManager::class.java)
-        notificationManager.notify(NOTIFICATION_ID, notification)
+        notificationManager.notify(NOTIFICATION_ID_UNPACK, notification)
+    }
+    
+    /**
+     * 显示数据清空通知
+     */
+    fun showClearDataNotification() {
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setContentTitle("数据已清空")
+            .setContentText("服务器请求清空所有会议数据，已执行完成")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .build()
+        
+        val notificationManager = context.getSystemService(NotificationManager::class.java)
+        notificationManager.notify(NOTIFICATION_ID_CLEAR, notification)
     }
 }

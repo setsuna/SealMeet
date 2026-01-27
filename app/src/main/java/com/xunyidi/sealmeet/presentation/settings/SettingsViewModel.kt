@@ -2,14 +2,12 @@ package com.xunyidi.sealmeet.presentation.settings
 
 import androidx.lifecycle.viewModelScope
 import com.xunyidi.sealmeet.core.mvi.BaseViewModel
-import com.xunyidi.sealmeet.data.local.database.AppDatabase
 import com.xunyidi.sealmeet.data.preferences.AppPreferences
+import com.xunyidi.sealmeet.domain.usecase.ClearDataUseCase
+import com.xunyidi.sealmeet.domain.usecase.ClearResult
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.io.File
 import javax.inject.Inject
 
 /**
@@ -18,8 +16,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val appPreferences: AppPreferences,
-    private val database: AppDatabase,
-    private val context: android.content.Context
+    private val clearDataUseCase: ClearDataUseCase
 ) : BaseViewModel<SettingsContract.State, SettingsContract.Intent, SettingsContract.Effect>(
     SettingsContract.State()
 ) {
@@ -150,33 +147,17 @@ class SettingsViewModel @Inject constructor(
             try {
                 Timber.i("开始清空所有数据...")
                 
-                // 使用 IO 线程执行数据库和文件操作
-                withContext(Dispatchers.IO) {
-                    // 1. 清空数据库
-                    database.clearAllTables()
-                    Timber.i("✅ 数据库已清空")
-                    
-                    // 2. 删除所有会议文件
-                    val meetingsDir = File(context.filesDir, "meetings")
-                    if (meetingsDir.exists()) {
-                        val deleted = meetingsDir.deleteRecursively()
-                        if (deleted) {
-                            Timber.i("✅ 会议文件已删除")
-                        } else {
-                            Timber.w("⚠️ 会议文件删除失败")
-                        }
-                    }
-                    
-                    // 3. 删除临时文件
-                    val cacheFiles = context.cacheDir.listFiles()
-                    cacheFiles?.filter { it.name.startsWith("unpack_") }?.forEach { file ->
-                        file.deleteRecursively()
-                    }
-                    Timber.i("✅ 临时文件已清理")
-                }
+                val result = clearDataUseCase.clearAllData(writeAckFile = false)
                 
-                sendEffect(SettingsContract.Effect.ShowToast("所有数据已清空"))
-                sendEffect(SettingsContract.Effect.DataCleared)
+                when (result) {
+                    is ClearResult.Success -> {
+                        sendEffect(SettingsContract.Effect.ShowToast("所有数据已清空"))
+                        sendEffect(SettingsContract.Effect.DataCleared)
+                    }
+                    is ClearResult.Failure -> {
+                        sendEffect(SettingsContract.Effect.ShowToast("清空数据失败: ${result.error}"))
+                    }
+                }
                 
             } catch (e: Exception) {
                 Timber.e(e, "清空数据失败")
