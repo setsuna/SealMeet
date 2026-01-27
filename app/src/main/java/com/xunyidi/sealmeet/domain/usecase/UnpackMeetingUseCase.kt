@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.squareup.moshi.JsonDataException
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import com.xunyidi.sealmeet.data.audit.AuditLogger
 import com.xunyidi.sealmeet.data.local.database.AppDatabase
 import com.xunyidi.sealmeet.data.local.database.entity.MeetingAgendaEntity
 import com.xunyidi.sealmeet.data.local.database.entity.MeetingEntity
@@ -51,6 +52,7 @@ class UnpackMeetingUseCase @Inject constructor(
     private val syncFileManager: SyncFileManager,
     private val appPreferences: AppPreferences,
     private val configApplyUseCase: ConfigApplyUseCase,
+    private val auditLogger: AuditLogger,
     private val context: android.content.Context
 ) {
     
@@ -109,6 +111,7 @@ class UnpackMeetingUseCase @Inject constructor(
             } catch (e: DecryptionException) {
                 Timber.e(e, "解密失败")
                 syncFileManager.cleanupCorruptedPackage(packageFile, "解密失败")
+                auditLogger.logUnpackFailed(packageFile.meetingId, "解密失败: ${e.message}")
                 return@withContext UnpackResult.Failure(
                     packageFile.meetingId,
                     UnpackError.DecryptionFailed(e.message ?: "Unknown")
@@ -127,6 +130,7 @@ class UnpackMeetingUseCase @Inject constructor(
                 } catch (e: UnzipException) {
                     Timber.e(e, "解压失败")
                     syncFileManager.cleanupCorruptedPackage(packageFile, "解压失败")
+                    auditLogger.logUnpackFailed(packageFile.meetingId, "解压失败: ${e.message}")
                     return@withContext UnpackResult.Failure(
                         packageFile.meetingId,
                         UnpackError.UnzipFailed(e.message ?: "Unknown")
@@ -139,6 +143,7 @@ class UnpackMeetingUseCase @Inject constructor(
                 if (manifestData == null) {
                     Timber.e("manifest.json 不存在")
                     syncFileManager.cleanupCorruptedPackage(packageFile, "manifest.json缺失")
+                    auditLogger.logUnpackFailed(packageFile.meetingId, "manifest.json不存在")
                     return@withContext UnpackResult.Failure(
                         packageFile.meetingId,
                         UnpackError.ManifestInvalid("manifest.json不存在")
@@ -151,6 +156,7 @@ class UnpackMeetingUseCase @Inject constructor(
                 } catch (e: JsonDataException) {
                     Timber.e(e, "manifest.json 解析失败")
                     syncFileManager.cleanupCorruptedPackage(packageFile, "manifest.json格式错误")
+                    auditLogger.logUnpackFailed(packageFile.meetingId, "manifest.json解析失败: ${e.message}")
                     return@withContext UnpackResult.Failure(
                         packageFile.meetingId,
                         UnpackError.ManifestInvalid("JSON解析失败: ${e.message}")
@@ -160,6 +166,7 @@ class UnpackMeetingUseCase @Inject constructor(
                 if (manifest == null) {
                     Timber.e("manifest.json 解析结果为null")
                     syncFileManager.cleanupCorruptedPackage(packageFile, "manifest.json解析失败")
+                    auditLogger.logUnpackFailed(packageFile.meetingId, "manifest.json解析结果为null")
                     return@withContext UnpackResult.Failure(
                         packageFile.meetingId,
                         UnpackError.ManifestInvalid("JSON解析结果为null")
@@ -334,7 +341,10 @@ class UnpackMeetingUseCase @Inject constructor(
                 
                 Timber.i("解包成功: ${packageFile.meetingId}, 文件=${fileEntityList.size}, 参会人员=${participants.size}, 议程=${agendas.size}")
                 
-                // 10. 根据配置决定是否清理临时文件
+                // 10. 记录审计日志
+                auditLogger.logUnpackSuccess(packageFile.meetingId, fileEntityList.size)
+                
+                // 11. 根据配置决定是否清理临时文件
                 if (keepTempFilesEnabled) {
                     Timber.i("保留临时文件: ${tempDir.absolutePath}")
                 } else {
@@ -342,7 +352,7 @@ class UnpackMeetingUseCase @Inject constructor(
                     Timber.d("已清理临时文件")
                 }
                 
-                // 11. 删除原包文件
+                // 12. 删除原包文件
                 syncFileManager.deletePackageFile(packageFile)
                 
                 UnpackResult.Success(
@@ -360,6 +370,8 @@ class UnpackMeetingUseCase @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "解包异常")
             syncFileManager.cleanupCorruptedPackage(packageFile, "未知错误: ${e.message}")
+            // 记录审计日志
+            auditLogger.logUnpackFailed(packageFile.meetingId, e.message ?: "Unknown")
             UnpackResult.Failure(
                 packageFile.meetingId,
                 UnpackError.Unknown(e.message ?: "Unknown")

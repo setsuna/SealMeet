@@ -63,6 +63,24 @@ object StoragePathManager {
     }
     
     /**
+     * 获取上行同步目录（审计日志、设备状态等）
+     * 
+     * 平板写入，服务器读取
+     * 
+     * @param isDeveloperMode 是否为开发者模式
+     * @return 上行同步目录
+     */
+    fun getUploadDirectory(isDeveloperMode: Boolean): File {
+        return if (isDeveloperMode) {
+            // 开发者模式：使用 Documents/SealMeetUpload 目录
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).resolve("SealMeetUpload")
+        } else {
+            // 生产模式：使用应用专属上行目录
+            File("$APP_EXTERNAL_ROOT/upload")
+        }
+    }
+    
+    /**
      * 获取日志目录（未来可能需要）
      * 
      * @param isDeveloperMode 是否为开发者模式
@@ -100,6 +118,7 @@ object StoragePathManager {
     fun initializeDirectories(context: Context, isDeveloperMode: Boolean) {
         val directories = listOf(
             getSyncDirectory(isDeveloperMode),
+            getUploadDirectory(isDeveloperMode),
             getMeetingsRoot(context, isDeveloperMode),
             getLogsDirectory(isDeveloperMode),
             getCacheDirectory(isDeveloperMode)
