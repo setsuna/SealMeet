@@ -2,6 +2,7 @@ package com.xunyidi.sealmeet.presentation.screen.login
 
 import androidx.lifecycle.viewModelScope
 import com.xunyidi.sealmeet.core.mvi.BaseViewModel
+import com.xunyidi.sealmeet.data.audit.AuditLogger
 import com.xunyidi.sealmeet.data.preferences.AppPreferences
 import com.xunyidi.sealmeet.data.repository.AuthRepository
 import com.xunyidi.sealmeet.data.repository.AuthResult
@@ -16,7 +17,8 @@ import javax.inject.Inject
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val appPreferences: AppPreferences
+    private val appPreferences: AppPreferences,
+    private val auditLogger: AuditLogger
 ) : BaseViewModel<LoginContract.State, LoginContract.Intent, LoginContract.Effect>(
     initialState = LoginContract.State()
 ) {
@@ -76,6 +78,9 @@ class LoginViewModel @Inject constructor(
                     is AuthResult.Success -> {
                         val participant = result.participant
                         Timber.i("登录成功，用户: ${participant.userName}, 会议ID: ${result.meetingId}")
+                        
+                        // 记录审计日志
+                        auditLogger.logUserLogin(participant.userId, participant.userName)
                         
                         // 保存当前登录用户信息
                         appPreferences.setCurrentUser(
