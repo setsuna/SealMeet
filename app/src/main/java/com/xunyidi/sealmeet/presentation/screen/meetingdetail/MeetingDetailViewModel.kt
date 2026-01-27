@@ -248,22 +248,39 @@ class MeetingDetailViewModel @Inject constructor(
                 val userName = appPreferences.currentUserName.first() ?: "访客"
                 val isDeveloperMode = appPreferences.developerModeEnabled.first()
                 
-                // 生成签名文件名
-                val timestamp = System.currentTimeMillis() / 1000
-                val fileName = "signature_${meetingId}_${userId}_$timestamp.png"
+                // 裁切空白区域
+                val croppedBitmap = cropSignatureBitmap(signatureBitmap)
                 
-                // 保存签名文件
+                // 获取签名目录
                 val signaturesDir = StoragePathManager.getSignaturesDirectory(isDeveloperMode)
                 if (!signaturesDir.exists()) {
                     signaturesDir.mkdirs()
                 }
                 
+                // 删除旧的签名文件（同一会议同一用户）
+                val prefix = "signature_${meetingId}_${userId}_"
+                signaturesDir.listFiles { file ->
+                    file.name.startsWith(prefix) && file.name.endsWith(".png")
+                }?.forEach { oldFile ->
+                    oldFile.delete()
+                    Timber.d("删除旧签名文件: ${oldFile.name}")
+                }
+                
+                // 生成新的签名文件名（带时间戳）
+                val timestamp = System.currentTimeMillis() / 1000
+                val fileName = "signature_${meetingId}_${userId}_$timestamp.png"
                 val signatureFile = File(signaturesDir, fileName)
                 
+                // 保存签名文件
                 withContext(Dispatchers.IO) {
                     FileOutputStream(signatureFile).use { out ->
-                        signatureBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                        croppedBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
                     }
+                }
+                
+                // 回收裁切后的 Bitmap
+                if (croppedBitmap != signatureBitmap) {
+                    croppedBitmap.recycle()
                 }
                 
                 Timber.i("签名文件保存成功: ${signatureFile.absolutePath}")
@@ -285,6 +302,58 @@ class MeetingDetailViewModel @Inject constructor(
                 sendEffect(MeetingDetailContract.Effect.ShowError("签到失败: ${e.message}"))
             }
         }
+    }
+    
+    /**
+     * 裁切签名图片空白区域
+     */
+    private fun cropSignatureBitmap(bitmap: Bitmap): Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+        
+        // 找到非白色像素的边界
+        var minX = width
+        var minY = height
+        var maxX = 0
+        var maxY = 0
+        
+        val pixels = IntArray(width * height)
+        bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+        
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                val pixel = pixels[y * width + x]
+                // 检查是否为非白色（允许一定容差）
+                val r = (pixel shr 16) and 0xFF
+                val g = (pixel shr 8) and 0xFF
+                val b = pixel and 0xFF
+                
+                // 如果不是白色（RGB都接近255）
+                if (r < 250 || g < 250 || b < 250) {
+                    if (x < minX) minX = x
+                    if (x > maxX) maxX = x
+                    if (y < minY) minY = y
+                    if (y > maxY) maxY = y
+                }
+            }
+        }
+        
+        // 如果没有找到非白色像素，返回原图
+        if (minX > maxX || minY > maxY) {
+            return bitmap
+        }
+        
+        // 添加边距
+        val padding = 20
+        minX = (minX - padding).coerceAtLeast(0)
+        minY = (minY - padding).coerceAtLeast(0)
+        maxX = (maxX + padding).coerceAtMost(width - 1)
+        maxY = (maxY + padding).coerceAtMost(height - 1)
+        
+        val cropWidth = maxX - minX + 1
+        val cropHeight = maxY - minY + 1
+        
+        return Bitmap.createBitmap(bitmap, minX, minY, cropWidth, cropHeight)
     }
 
     /**

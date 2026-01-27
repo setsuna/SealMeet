@@ -609,38 +609,41 @@ private fun ManualSignInDialog(
     var currentPoints by remember { mutableStateOf(listOf<Offset>()) }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.8f)
+                .fillMaxWidth(0.95f)
                 .wrapContentHeight(),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = AppColors.bgCard)
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "手写签到",
-                    fontSize = 20.sp,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = AppColors.textPrimary
                 )
                 
                 Text(
                     text = "请在下方区域签名",
-                    fontSize = 14.sp,
+                    fontSize = 16.sp,
                     color = AppColors.textSecondary
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 
-                // 签名区域
+                // 签名区域（放大一倍）
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
+                        .height(400.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color.White)
                         .border(1.dp, AppColors.divider, RoundedCornerShape(8.dp))
@@ -677,24 +680,27 @@ private fun ManualSignInDialog(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     OutlinedButton(
                         onClick = {
                             allPoints = emptyList()
                             currentPoints = emptyList()
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).height(48.dp)
                     ) {
-                        Text("清除")
+                        Text("清除", fontSize = 16.sp)
                     }
                     
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("取消")
+                    OutlinedButton(
+                        onClick = onDismiss, 
+                        modifier = Modifier.weight(1f).height(48.dp)
+                    ) {
+                        Text("取消", fontSize = 16.sp)
                     }
                     
                     Button(
@@ -704,11 +710,11 @@ private fun ManualSignInDialog(
                                 onConfirm(bitmap)
                             }
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).height(48.dp),
                         enabled = allPoints.isNotEmpty(),
                         colors = ButtonDefaults.buttonColors(containerColor = AppColors.primaryDefault)
                     ) {
-                        Text("确认签到")
+                        Text("确认签到", fontSize = 16.sp)
                     }
                 }
             }
