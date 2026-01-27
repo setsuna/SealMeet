@@ -88,6 +88,12 @@ interface ParticipantDao {
     fun getCountByMeetingIdFlow(meetingId: String): Flow<Int>
     
     /**
+     * 根据用户名查询所有会议中的参会记录（用于跨会议登录）
+     */
+    @Query("SELECT * FROM meeting_participants WHERE user_name = :userName")
+    suspend fun getByUserName(userName: String): List<MeetingParticipantEntity>
+    
+    /**
      * 验证参会人员密码（用于标准会议）
      * 返回匹配的参会人员信息
      */
