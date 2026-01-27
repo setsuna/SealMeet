@@ -6,6 +6,7 @@ import com.xunyidi.sealmeet.data.local.database.dao.MeetingDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -39,6 +40,8 @@ class MeetingListViewModel @Inject constructor(
             }
             is MeetingListContract.Intent.Refresh -> refresh()
             is MeetingListContract.Intent.SelectMeeting -> selectMeeting(intent.meetingId)
+            is MeetingListContract.Intent.ToggleStandardExpanded -> toggleStandardExpanded()
+            is MeetingListContract.Intent.ToggleTabletExpanded -> toggleTabletExpanded()
         }
     }
 
@@ -62,6 +65,7 @@ class MeetingListViewModel @Inject constructor(
     /**
      * 持续监听会议列表
      * 根据会议类型查询：
+     * - all: 所有会议，分组显示（登录后显示）
      * - standard: 标准会议（账号密码登录）
      * - tablet: 平板会议（快速会议）
      */
@@ -69,43 +73,104 @@ class MeetingListViewModel @Inject constructor(
         observeJob = viewModelScope.launch {
             updateState { copy(isLoading = true, errorMessage = null) }
             
-            val meetingsFlow = when (currentMeetingType) {
+            when (currentMeetingType) {
+                "all" -> {
+                    // 同时监听两种类型的会议
+                    Timber.d("监听所有会议列表（分组）")
+                    combine(
+                        meetingDao.getStandardMeetingsFlow(),
+                        meetingDao.getTabletMeetingsFlow()
+                    ) { standardMeetings, tabletMeetings ->
+                        Pair(standardMeetings, tabletMeetings)
+                    }
+                        .catch { e ->
+                            Timber.e(e, "监听会议列表失败")
+                            updateState { 
+                                copy(
+                                    isLoading = false,
+                                    errorMessage = "加载失败: ${e.message}"
+                                )
+                            }
+                            sendEffect(MeetingListContract.Effect.ShowError("加载会议失败"))
+                        }
+                        .collect { (standardMeetings, tabletMeetings) ->
+                            Timber.d("会议列表更新: 标准=${standardMeetings.size}, 快速=${tabletMeetings.size}")
+                            updateState { 
+                                copy(
+                                    isLoading = false,
+                                    meetings = standardMeetings + tabletMeetings,
+                                    standardMeetings = standardMeetings,
+                                    tabletMeetings = tabletMeetings,
+                                    errorMessage = null
+                                )
+                            }
+                        }
+                }
                 "standard" -> {
                     Timber.d("监听标准会议列表")
                     meetingDao.getStandardMeetingsFlow()
-                }
-                "tablet" -> {
-                    Timber.d("监听平板会议列表")
-                    meetingDao.getTabletMeetingsFlow()
+                        .catch { e ->
+                            Timber.e(e, "监听会议列表失败")
+                            updateState { 
+                                copy(
+                                    isLoading = false,
+                                    errorMessage = "加载失败: ${e.message}"
+                                )
+                            }
+                            sendEffect(MeetingListContract.Effect.ShowError("加载会议失败"))
+                        }
+                        .collect { meetings ->
+                            Timber.d("标准会议列表更新: ${meetings.size}个")
+                            updateState { 
+                                copy(
+                                    isLoading = false,
+                                    meetings = meetings,
+                                    errorMessage = null
+                                )
+                            }
+                        }
                 }
                 else -> {
-                    Timber.w("未知会议类型: $currentMeetingType，使用平板会议")
+                    // tablet 或其他
+                    Timber.d("监听平板会议列表")
                     meetingDao.getTabletMeetingsFlow()
+                        .catch { e ->
+                            Timber.e(e, "监听会议列表失败")
+                            updateState { 
+                                copy(
+                                    isLoading = false,
+                                    errorMessage = "加载失败: ${e.message}"
+                                )
+                            }
+                            sendEffect(MeetingListContract.Effect.ShowError("加载会议失败"))
+                        }
+                        .collect { meetings ->
+                            Timber.d("平板会议列表更新: ${meetings.size}个")
+                            updateState { 
+                                copy(
+                                    isLoading = false,
+                                    meetings = meetings,
+                                    errorMessage = null
+                                )
+                            }
+                        }
                 }
             }
-            
-            meetingsFlow
-                .catch { e ->
-                    Timber.e(e, "监听会议列表失败")
-                    updateState { 
-                        copy(
-                            isLoading = false,
-                            errorMessage = "加载失败: ${e.message}"
-                        )
-                    }
-                    sendEffect(MeetingListContract.Effect.ShowError("加载会议失败"))
-                }
-                .collect { meetings ->
-                    Timber.d("会议列表更新: ${meetings.size}个 (类型: $currentMeetingType)")
-                    updateState { 
-                        copy(
-                            isLoading = false,
-                            meetings = meetings,
-                            errorMessage = null
-                        )
-                    }
-                }
         }
+    }
+
+    /**
+     * 切换标准会议Card展开状态
+     */
+    private fun toggleStandardExpanded() {
+        updateState { copy(isStandardExpanded = !isStandardExpanded) }
+    }
+
+    /**
+     * 切换快速会议Card展开状态
+     */
+    private fun toggleTabletExpanded() {
+        updateState { copy(isTabletExpanded = !isTabletExpanded) }
     }
 
     /**

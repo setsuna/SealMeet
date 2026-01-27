@@ -89,11 +89,11 @@ class MainActivity : ComponentActivity() {
                     is Screen.Login -> {
                         LoginScreen(
                             onNavigateToHome = {
-                                // 账号密码登录 -> 标准会议列表
-                                currentScreen = Screen.MeetingList(meetingType = "standard")
+                                // 账号密码登录 -> 显示所有会议（standard + tablet）
+                                currentScreen = Screen.MeetingList(meetingType = "all")
                             },
                             onNavigateToQuickMeeting = {
-                                // 快速会议 -> 平板会议列表
+                                // 快速会议 -> 只显示平板会议
                                 currentScreen = Screen.MeetingList(meetingType = "tablet")
                             }
                         )

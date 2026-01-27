@@ -16,8 +16,16 @@ object MeetingListContract {
     data class State(
         val isLoading: Boolean = false,
         val meetings: List<MeetingEntity> = emptyList(),
+        /** 标准会议列表（仅 meetingType = "all" 时使用） */
+        val standardMeetings: List<MeetingEntity> = emptyList(),
+        /** 快速会议列表（仅 meetingType = "all" 时使用） */
+        val tabletMeetings: List<MeetingEntity> = emptyList(),
         val errorMessage: String? = null,
-        val meetingType: String = "tablet" // standard 或 tablet
+        val meetingType: String = "tablet", // all、standard 或 tablet
+        /** 标准会议Card是否展开 */
+        val isStandardExpanded: Boolean = true,
+        /** 快速会议Card是否展开 */
+        val isTabletExpanded: Boolean = true
     ) : UiState
 
     /**
@@ -28,6 +36,10 @@ object MeetingListContract {
         data class SetMeetingType(val meetingType: String) : Intent
         data object Refresh : Intent
         data class SelectMeeting(val meetingId: String) : Intent
+        /** 切换标准会议Card展开状态 */
+        data object ToggleStandardExpanded : Intent
+        /** 切换快速会议Card展开状态 */
+        data object ToggleTabletExpanded : Intent
     }
 
     /**
