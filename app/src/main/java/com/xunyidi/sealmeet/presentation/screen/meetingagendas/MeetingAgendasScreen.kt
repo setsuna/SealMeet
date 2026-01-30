@@ -3,6 +3,7 @@ package com.xunyidi.sealmeet.presentation.screen.meetingagendas
 import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -32,6 +33,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.xunyidi.sealmeet.R
 import com.xunyidi.sealmeet.data.local.database.entity.MeetingAgendaEntity
 import com.xunyidi.sealmeet.data.local.database.entity.MeetingFileEntity
+import com.xunyidi.sealmeet.presentation.service.FloatingFileService
 import com.xunyidi.sealmeet.presentation.theme.AppColors
 import java.io.File
 
@@ -47,6 +49,13 @@ fun MeetingAgendasScreen(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
+    // 页面退出时停止悬浮服务
+    DisposableEffect(Unit) {
+        onDispose {
+            FloatingFileService.stop(context)
+        }
+    }
+
     // 加载数据
     LaunchedEffect(meetingId) {
         viewModel.handleIntent(MeetingAgendasContract.Intent.LoadAgendas(meetingId))
@@ -57,6 +66,8 @@ fun MeetingAgendasScreen(
         viewModel.effect.collect { effect ->
             when (effect) {
                 is MeetingAgendasContract.Effect.NavigateBack -> {
+                    // 返回时停止悬浮服务
+                    FloatingFileService.stop(context)
                     onNavigateBack()
                 }
                 is MeetingAgendasContract.Effect.ShowError -> {
@@ -67,6 +78,21 @@ fun MeetingAgendasScreen(
                 }
                 is MeetingAgendasContract.Effect.OpenFileViewer -> {
                     try {
+                        // 启动悬浮文件选择器
+                        if (Settings.canDrawOverlays(context)) {
+                            FloatingFileService.start(context, meetingId)
+                        } else {
+                            // 没有悬浮窗权限，提示用户
+                            Toast.makeText(context, "请授予悬浮窗权限以启用快速切换文件", Toast.LENGTH_LONG).show()
+                            // 跳转到权限设置页面
+                            val intent = Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:${context.packageName}")
+                            )
+                            context.startActivity(intent)
+                        }
+                        
+                        // 打开文件
                         val intent = createFileViewerIntent(effect.filePath, effect.fileName)
                         context.startActivity(intent)
                     } catch (e: Exception) {

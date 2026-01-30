@@ -24,6 +24,7 @@ import com.xunyidi.sealmeet.presentation.screen.login.LoginScreen
 import com.xunyidi.sealmeet.presentation.screen.meetingagendas.MeetingAgendasScreen
 import com.xunyidi.sealmeet.presentation.screen.meetingdetail.MeetingDetailScreen
 import com.xunyidi.sealmeet.presentation.screen.meetinglist.MeetingListScreen
+import com.xunyidi.sealmeet.presentation.service.FloatingFileService
 import com.xunyidi.sealmeet.presentation.theme.SealMeetTheme
 import com.xunyidi.sealmeet.util.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
@@ -84,6 +85,13 @@ class MainActivity : ComponentActivity() {
             SealMeetTheme {
                 var currentScreen by rememberSaveable(stateSaver = ScreenSaver) { 
                     mutableStateOf<Screen>(Screen.Login) 
+                }
+                
+                // 当离开议程页面时停止悬浮服务
+                LaunchedEffect(currentScreen) {
+                    if (currentScreen !is Screen.MeetingAgendas) {
+                        FloatingFileService.stop(this@MainActivity)
+                    }
                 }
 
                 when (val screen = currentScreen) {

@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.xunyidi.sealmeet.data.local.database.entity.MeetingEntity
+import com.xunyidi.sealmeet.presentation.service.FloatingFileService
 import com.xunyidi.sealmeet.presentation.theme.AppColors
 import java.text.SimpleDateFormat
 import java.util.*
@@ -61,12 +62,14 @@ fun MeetingDetailScreen(
         viewModel.effect.collect { effect ->
             when (effect) {
                 is MeetingDetailContract.Effect.NavigateBack -> {
+                    FloatingFileService.stop(context)
                     onNavigateBack()
                 }
                 is MeetingDetailContract.Effect.NavigateToAgendas -> {
                     onNavigateToAgendas(effect.meetingId)
                 }
                 is MeetingDetailContract.Effect.NavigateToLogin -> {
+                    FloatingFileService.stop(context)
                     onNavigateToLogin()
                 }
                 is MeetingDetailContract.Effect.ShowError -> {

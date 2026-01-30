@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="24dp"
+    android:layout_height="56dp"
+    android:background="@drawable/bg_floating_tab">
+
+    <ImageView
+        android:id="@+id/iv_floating_icon"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_gravity="center"
+        android:src="@drawable/ic_arrow_expand"
+        android:contentDescription="展开文件列表" />
+
+</FrameLayout>
